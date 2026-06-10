@@ -9,7 +9,7 @@
     
     <title>
         
-            归档 |
+            标签: MC |
         
         Mulatram的技术博客
     </title>
@@ -81,7 +81,7 @@
                         </li>
                     
                         
-                        <li class="menu-item flex-start border-box active">
+                        <li class="menu-item flex-start border-box">
                             <a class="menu-text-color border-box" href="/archives">
                                 
                                 归档
@@ -124,7 +124,7 @@
                 </li>
             
                 
-                <li class="drawer-menu-item border-box not-sub-menu active">
+                <li class="drawer-menu-item border-box not-sub-menu">
                     <label class="drawer-menu-label border-box">
                         <a class="drawer-menu-text-color left-side flex-start border-box" href="/archives">
                             
@@ -150,54 +150,31 @@
             <div class="main-content border-box">
                 
 
-                    <div class="fade-in-down-animation">
-    <div class="archives-container">
-        <div class="archives-timeline border-box">
-            
-<div class="archive-list-container border-box">
-    
-        <section class="archive-item border-box">
-            <div class="archive-item-header border-box">
-                <span class="archive-year">2026</span>
-            </div>
-            <ul class="archive-item-body border-box">
-                
-                    <li class="post-item border-box">
-                        <span class="starting-point border-box flex-center"></span>
-                        <span class="post-date border-box">06-10</span>
-                        <a class="post-title border-box text-ellipsis"
-                           href="/%E4%B8%80%E7%A7%8D%E6%99%BA%E5%8A%9B%E9%9D%9E%E5%B8%B8%E9%AB%98%E7%9A%84%E6%A8%A1%E7%BB%84%E9%94%99%E8%AF%AF%E6%8E%92%E6%9F%A5%E6%96%B9%E6%B3%95/"
-                        >一种智力非常高的模组错误排查方法</a>
-                    </li>
-                
-                    <li class="post-item border-box">
-                        <span class="starting-point border-box flex-center"></span>
-                        <span class="post-date border-box">06-06</span>
-                        <a class="post-title border-box text-ellipsis"
-                           href="/%E8%AE%B0%E5%AF%B9%E7%BA%BF%E6%AE%B5%E6%A0%91%E8%87%AA%E5%B7%B1%E7%9A%84%E7%90%86%E8%A7%A3/"
-                        >记对线段树自己的理解</a>
-                    </li>
-                
-                    <li class="post-item border-box">
-                        <span class="starting-point border-box flex-center"></span>
-                        <span class="post-date border-box">06-06</span>
-                        <a class="post-title border-box text-ellipsis"
-                           href="/%E6%B5%8B%E8%AF%95/"
-                        >测试</a>
-                    </li>
-                
-            </ul>
-        </section>
-    
-</div>
+                    $tag-name-font-size = 1.5rem
 
-        </div>
-    </div>
-    
+.tag-archive-container {
 
+  keep-container(1, 2rem, 2rem)
 
+  .tag-name {
+    margin-bottom var(--component-gap)
+    color var(--text-color-2)
+    font-weight 600
+    font-size $tag-name-font-size
 
-</div>
+    i {
+      color var(--text-color-2)
+    }
+
+    +keep-tablet() {
+      font-size $tag-name-font-size * 0.9
+    }
+
+    +keep-mobile() {
+      font-size $tag-name-font-size * 0.8
+    }
+  }
+}
 
 
                 
