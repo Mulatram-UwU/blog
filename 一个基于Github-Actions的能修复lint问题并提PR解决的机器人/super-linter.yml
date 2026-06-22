@@ -1,0 +1,106 @@
+---
+name: Lint
+
+on:
+  push:
+    branches-ignore:
+      - auto-lint-*
+
+jobs:
+  lint-report:
+    permissions:
+      contents: read
+      actions: read
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+      - name: Super-Linter (diagnostic)
+        continue-on-error: true
+        uses: super-linter/super-linter@v8.7.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ENABLE_GITHUB_ACTIONS_STEP_SUMMARY: false
+          SAVE_SUPER_LINTER_SUMMARY: true
+      - name: Upload lint report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-report
+          path: super-linter-output/super-linter-summary.md
+
+  fix-lint-issues:
+    permissions:
+      contents: write
+      statuses: write
+      pull-requests: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
+      - name: Super-Linter
+        continue-on-error: true
+        uses: super-linter/super-linter@v8.7.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ENABLE_GITHUB_ACTIONS_STEP_SUMMARY: false
+          FILTER_REGEX_EXCLUDE: .*\.github/workflows/.*
+          FIX_GOOGLE_JAVA_FORMAT: true
+          FIX_JSON: true
+          FIX_MARKDOWN: true
+          FIX_NATURAL_LANGUAGE: true
+          FIX_BIOME_FORMAT: true
+
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if git diff --quiet; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "NEW_BRANCH=auto-lint-${{ github.run_id }}-${{ github.run_attempt }}" >> $GITHUB_ENV
+          fi
+
+      - name: Commit and push linting fixes
+        if: steps.changes.outputs.has_changes == 'true'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          branch: ${{ env.NEW_BRANCH }}
+          create_branch: true
+          commit_message: "chore: fix linting issues"
+          commit_user_name: super-linter
+          commit_user_email: super-linter@super-linter.dev
+
+      - name: Ensure auto-lint label exists
+        if: steps.changes.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh label create auto-lint --force || true
+
+      - name: Close old auto-lint PRs and create new one
+        if: steps.changes.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr list --state open --label auto-lint --json number \
+            --jq '.[].number' | while read -r pr_num; do
+              gh pr close "$pr_num" --comment "Superseded by a newer auto-lint PR."
+          done
+          git fetch --prune origin
+          git branch -r --list 'origin/auto-lint-*' | sed 's|origin/||' | while read -r branch; do
+              if [ "$branch" != "${{ env.NEW_BRANCH }}" ]; then
+                git push origin --delete "$branch" || true
+              fi
+          done
+          gh pr create \
+            --title "chore: fix linting issues" \
+            --body "Automated linting fixes. Please review." \
+            --base ${{ github.ref_name }} \
+            --head ${{ env.NEW_BRANCH }} \
+            --label auto-lint
