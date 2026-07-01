@@ -204,10 +204,10 @@
             <span class="post-tag meta-info-item border-box">
                 <ul class="post-tag-ul">
                     
-                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/OI/">OI</a></li>
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/MC/">MC</a></li>
                         
                     
-                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/MC/">MC</a></li>
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/OI/">OI</a></li>
                         
                     
                 </ul>
@@ -234,28 +234,28 @@
                     
                          <p>介绍了一种基于拓扑排序+二分的快速排查错误的启发式算法（仅在只有一个自身坏的包时保证正确性）。</p>
 <span id="more"></span>
-<h1>前言</h1>
-<p>社区里一直有一个神秘的错误排查方法，就是“二分”。这个策略非常有效当崩溃报告难以分析出原因时。<br>
-但是考虑到复杂的依赖关系，手动“二分”只能建立在模组相对独立的条件下。<br>
+<h1 id="前言"><a class="markdownIt-Anchor" href="#前言"></a> 前言</h1>
+<p>社区里一直有一个神秘的错误排查方法，就是“二分”。这个策略非常有效当崩溃报告难以分析出原因时。<br />
+但是考虑到复杂的依赖关系，手动“二分”只能建立在模组相对独立的条件下。<br />
 最近看见<a class="link"   target="_blank" rel="noopener" href="https://github.com/mclucy/lucy" >Lucy<i class="fas fa-external-link-alt"></i></a>就想起来这茬了。</p>
-<h1>创新点，，，</h1>
-<p>MC模组的依赖关系可以看作一个DAG（要是有环就神了）。我们的需求是，找到错误的模组（只有一个错误的模组）。<br>
-然后我们很明显发现，如果单纯按字典序或者什么序二分，容易造成有的模组找不到依赖。<br>
-聪明的朋友已经想到了，，，<br>
-我们可以使用拓扑排序（拓扑排序是指对于一个有向无环图G，给出一个每个节点的排列P，使得G中每条边U-&gt;V，都有U在排列中比V出现早的算法，常用Kahn或DFS）<br>
+<h1 id="创新点"><a class="markdownIt-Anchor" href="#创新点"></a> 创新点，，，</h1>
+<p>MC模组的依赖关系可以看作一个DAG（要是有环就神了）。我们的需求是，找到错误的模组（只有一个错误的模组）。<br />
+然后我们很明显发现，如果单纯按字典序或者什么序二分，容易造成有的模组找不到依赖。<br />
+聪明的朋友已经想到了，，，<br />
+我们可以使用拓扑排序（拓扑排序是指对于一个有向无环图G，给出一个每个节点的排列P，使得G中每条边U-&gt;V，都有U在排列中比V出现早的算法，常用Kahn或DFS）<br />
 然后再拓扑序里相当于二分答案最早的错误模组出现的位置。</p>
-<h1>缺点</h1>
-<p>很明显，它只在一个错误模组的情况下保证正确。<br>
-而且大部分模组本身不是坏的，和其他模组呆在一起就坏了。这种情况下只能找到拓扑序里先出现那个。<br>
-当然，如果找出所有错误模组和哪几个模组不兼容的关系，不难发现时间复杂度必然是非多项式的。<br>
+<h1 id="缺点"><a class="markdownIt-Anchor" href="#缺点"></a> 缺点</h1>
+<p>很明显，它只在一个错误模组的情况下保证正确。<br />
+而且大部分模组本身不是坏的，和其他模组呆在一起就坏了。这种情况下只能找到拓扑序里先出现那个。<br />
+当然，如果找出所有错误模组和哪几个模组不兼容的关系，不难发现时间复杂度必然是非多项式的。<br />
 也就是说这无疑是缓慢的。</p>
-<h1>优点</h1>
-<p>假设依赖关系DAG的边数是$E$，顶点数（模组数）是$V$<br>
-拓扑排序的时间复杂度是$\mathcal{O}(E+V)$<br>
-二分的时间复杂度是$\mathcal{O}(\log V)$<br>
-所以这个算法的时间复杂度是$\mathcal{O}(E+V+\log V)$<br>
-需要用户回应的次数的复杂度是$\mathcal{O}(\log V)$<br>
-这无疑是迅速的，，，<br>
+<h1 id="优点"><a class="markdownIt-Anchor" href="#优点"></a> 优点</h1>
+<p>假设依赖关系DAG的边数是<span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>E</mi></mrow><annotation encoding="application/x-tex">E</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.68333em;vertical-align:0em;"></span><span class="mord mathnormal" style="margin-right:0.05764em;">E</span></span></span></span>，顶点数（模组数）是<span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>V</mi></mrow><annotation encoding="application/x-tex">V</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.68333em;vertical-align:0em;"></span><span class="mord mathnormal" style="margin-right:0.22222em;">V</span></span></span></span><br />
+拓扑排序的时间复杂度是<span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="script">O</mi><mo stretchy="false">(</mo><mi>E</mi><mo>+</mo><mi>V</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">\mathcal{O}(E+V)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathcal" style="margin-right:0.02778em;">O</span></span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.05764em;">E</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.22222em;">V</span><span class="mclose">)</span></span></span></span><br />
+二分的时间复杂度是<span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="script">O</mi><mo stretchy="false">(</mo><mi>log</mi><mo>⁡</mo><mi>V</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">\mathcal{O}(\log V)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathcal" style="margin-right:0.02778em;">O</span></span><span class="mopen">(</span><span class="mop">lo<span style="margin-right:0.01389em;">g</span></span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord mathnormal" style="margin-right:0.22222em;">V</span><span class="mclose">)</span></span></span></span><br />
+所以这个算法的时间复杂度是<span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="script">O</mi><mo stretchy="false">(</mo><mi>E</mi><mo>+</mo><mi>V</mi><mo>+</mo><mi>log</mi><mo>⁡</mo><mi>V</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">\mathcal{O}(E+V+\log V)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathcal" style="margin-right:0.02778em;">O</span></span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.05764em;">E</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.76666em;vertical-align:-0.08333em;"></span><span class="mord mathnormal" style="margin-right:0.22222em;">V</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mop">lo<span style="margin-right:0.01389em;">g</span></span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord mathnormal" style="margin-right:0.22222em;">V</span><span class="mclose">)</span></span></span></span><br />
+需要用户回应的次数的复杂度是<span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="script">O</mi><mo stretchy="false">(</mo><mi>log</mi><mo>⁡</mo><mi>V</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">\mathcal{O}(\log V)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathcal" style="margin-right:0.02778em;">O</span></span><span class="mopen">(</span><span class="mop">lo<span style="margin-right:0.01389em;">g</span></span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord mathnormal" style="margin-right:0.22222em;">V</span><span class="mclose">)</span></span></span></span><br />
+这无疑是迅速的，，，<br />
 应该是正确性和速度平衡的一个算法</p>
 
                     
@@ -269,11 +269,11 @@
                             <ul class="post-tags-box border-box">
                                 
                                     <li class="tag-item border-box">
-                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/OI/">OI</a>
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/MC/">MC</a>
                                     </li>
                                 
                                     <li class="tag-item border-box">
-                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/MC/">MC</a>
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/OI/">OI</a>
                                     </li>
                                 
                             </ul>
