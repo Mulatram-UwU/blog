@@ -32,11 +32,7 @@
     KEEP.language_code_block = {"copy":"复制代码","copied":"已复制","fold":"折叠代码块","folded":"已折叠"}
     KEEP.language_copy_copyright = {"copy":"复制版权信息","copied":"已复制","title":"原文标题","author":"原文作者","link":"原文链接"}
   </script>
-<!-- hexo injector head_end start -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
-
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
-<!-- hexo injector head_end end --><meta name="generator" content="Hexo 7.3.0"></head>
+<meta name="generator" content="Hexo 7.3.0"></head>
 
 
 <body>
@@ -197,7 +193,7 @@
             
                 <span class="meta-info-item post-update-date">
                     <i class="icon fa-solid fa-file-pen"></i>&nbsp;
-                    <span class="datetime" data-updated="Mon Jun 22 2026 14:29:21 GMT+0800">2026-06-22 14:29:21</span>
+                    <span class="datetime" data-updated="Wed Jul 01 2026 20:15:31 GMT+0800">2026-07-01 20:15:31</span>
                 </span>
             
         
@@ -238,16 +234,36 @@
                     
                          <p>详细讲解了线段树。</p>
 <span id="more"></span>
-<h1 id="线段树"><a href="#线段树" class="headerlink" title="线段树"></a>线段树</h1><h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>看了<a class="link"   target="_blank" rel="noopener" href="https://oi-wiki.org/ds/seg/" >OI Wiki<i class="fas fa-external-link-alt"></i></a>的线段树，最近几天琢磨明白了，分享一下我的理解。</p>
-<h2 id="线段树能做什么"><a href="#线段树能做什么" class="headerlink" title="线段树能做什么"></a>线段树能做什么</h2><p>线段树是一个能快速求区间和、区间最大值、区间最小值的数据结构。<br>它也可以单点修改、区间修改。<br>而上述操作的复杂度都是$\mathcal{O}(\log N)$，这无疑是迅速的。</p>
-<h2 id="它是如何实现的"><a href="#它是如何实现的" class="headerlink" title="它是如何实现的"></a>它是如何实现的</h2><h3 id="建树"><a href="#建树" class="headerlink" title="建树"></a>建树</h3><p>一开始我们有一个区间$[1,n]$，代表一个$n$长度的数组的所有值。<br>然后我们把他劈成两半，$[1,\lfloor\frac{1+n}{2}\rfloor]$和$[\lfloor\frac{1+n}{2}\rfloor+1,n]$，把这两个区间抽象为$[1,n]$的子节点。然后重复这个过程，把区间$[a,b]$劈成$[a,\lfloor\frac{a+b}{2}\rfloor]$和$[\lfloor\frac{a+b}{2}\rfloor+1,b]$。<br>这样整个数组就变成了一颗二叉树。<br><img   src="/%E8%AE%B0%E5%AF%B9%E7%BA%BF%E6%AE%B5%E6%A0%91%E8%87%AA%E5%B7%B1%E7%9A%84%E7%90%86%E8%A7%A3/graph.png"  alt="线段树的可视化"><br>我们可以通过递归来完成线段树的建树，以区间求和为例，代码如下。</p>
-<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//原始数据，N为长度</span></span><br><span class="line"><span class="type">int</span> raw[N<span class="number">+1</span>];</span><br><span class="line"><span class="comment">//线段树，通常要开四倍大小以应对最差情况，证明在https://www.luogu.com.cn/article/j8gzpv2p</span></span><br><span class="line"><span class="type">int</span> seg[<span class="number">4</span>*N<span class="number">+1</span>];</span><br><span class="line"><span class="comment">//值得注意的是，两个数组都是1索引</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">build</span><span class="params">(<span class="type">int</span> left,<span class="type">int</span> right,<span class="type">int</span> index)</span></span>&#123;</span><br><span class="line">    <span class="comment">//区间只有一个元素的情况</span></span><br><span class="line">    <span class="keyword">if</span>(left==right)&#123;</span><br><span class="line">        <span class="comment">//把这个区间的和设置为这个元素的值</span></span><br><span class="line">        seg[index]=a[left];</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//(left+right)/2等于left+(right-left)/2，但后者在较大数据时不会溢出</span></span><br><span class="line">    <span class="type">int</span> mid=left+(right-left)/<span class="number">2</span>;</span><br><span class="line">    <span class="comment">//index的叶子节点是2*index和2*index+1是一种二叉树存储技巧。</span></span><br><span class="line">    <span class="comment">//这样存储可以快速求一个下标对应的节点的左叶子节点和右叶子节点的下标</span></span><br><span class="line">    <span class="comment">//也可以快速求一个下表对应节点的父节点的下标</span></span><br><span class="line">    <span class="built_in">build</span>(left,mid,<span class="number">2</span>*index);</span><br><span class="line">    <span class="built_in">build</span>(mid<span class="number">+1</span>,right,<span class="number">2</span>*index<span class="number">+1</span>);</span><br><span class="line">    seg[index]=seg[<span class="number">2</span>*index]+seg[<span class="number">2</span>*index<span class="number">+1</span>];</span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">main</span><span class="params">()</span></span>&#123;</span><br><span class="line">    <span class="comment">//省略把数据读取到raw数组</span></span><br><span class="line">    <span class="built_in">build</span>(<span class="number">1</span>,n,<span class="number">1</span>);<span class="comment">//n为数组长度</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1>线段树</h1>
+<h2 id="前言">前言</h2>
+<p>看了<a class="link"   target="_blank" rel="noopener" href="https://oi-wiki.org/ds/seg/" >OI Wiki<i class="fas fa-external-link-alt"></i></a>的线段树，最近几天琢磨明白了，分享一下我的理解。</p>
+<h2 id="线段树能做什么">线段树能做什么</h2>
+<p>线段树是一个能快速求区间和、区间最大值、区间最小值的数据结构。<br>
+它也可以单点修改、区间修改。<br>
+而上述操作的复杂度都是$\mathcal{O}(\log N)$，这无疑是迅速的。</p>
+<h2 id="它是如何实现的">它是如何实现的</h2>
+<h3 id="建树">建树</h3>
+<p>一开始我们有一个区间$[1,n]$，代表一个$n$长度的数组的所有值。<br>
+然后我们把他劈成两半，$[1,\lfloor\frac{1+n}{2}\rfloor]$和$[\lfloor\frac{1+n}{2}\rfloor+1,n]$，把这两个区间抽象为$[1,n]$的子节点。然后重复这个过程，把区间$[a,b]$劈成$[a,\lfloor\frac{a+b}{2}\rfloor]$和$[\lfloor\frac{a+b}{2}\rfloor+1,b]$。<br>
+这样整个数组就变成了一颗二叉树。<br>
+<img   src="%E8%AE%B0%E5%AF%B9%E7%BA%BF%E6%AE%B5%E6%A0%91%E8%87%AA%E5%B7%B1%E7%9A%84%E7%90%86%E8%A7%A3/graph.png"  alt="线段树的可视化"><br>
+我们可以通过递归来完成线段树的建树，以区间求和为例，代码如下。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//原始数据，N为长度</span></span><br><span class="line"><span class="type">int</span> raw[N<span class="number">+1</span>];</span><br><span class="line"><span class="comment">//线段树，通常要开四倍大小以应对最差情况，证明在https://www.luogu.com.cn/article/j8gzpv2p</span></span><br><span class="line"><span class="type">int</span> seg[<span class="number">4</span>*N<span class="number">+1</span>];</span><br><span class="line"><span class="comment">//值得注意的是，两个数组都是1索引</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">build</span><span class="params">(<span class="type">int</span> left,<span class="type">int</span> right,<span class="type">int</span> index)</span></span>&#123;</span><br><span class="line">    <span class="comment">//区间只有一个元素的情况</span></span><br><span class="line">    <span class="keyword">if</span>(left==right)&#123;</span><br><span class="line">        <span class="comment">//把这个区间的和设置为这个元素的值</span></span><br><span class="line">        seg[index]=a[left];</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//(left+right)/2等于left+(right-left)/2，但后者在较大数据时不会溢出</span></span><br><span class="line">    <span class="type">int</span> mid=left+(right-left)/<span class="number">2</span>;</span><br><span class="line">    <span class="comment">//index的叶子节点是2*index和2*index+1是一种二叉树存储技巧。</span></span><br><span class="line">    <span class="comment">//这样存储可以快速求一个下标对应的节点的左叶子节点和右叶子节点的下标</span></span><br><span class="line">    <span class="comment">//也可以快速求一个下表对应节点的父节点的下标</span></span><br><span class="line">    <span class="built_in">build</span>(left,mid,<span class="number">2</span>*index);</span><br><span class="line">    <span class="built_in">build</span>(mid<span class="number">+1</span>,right,<span class="number">2</span>*index<span class="number">+1</span>);</span><br><span class="line">    seg[index]=seg[<span class="number">2</span>*index]+seg[<span class="number">2</span>*index<span class="number">+1</span>];</span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">main</span><span class="params">()</span></span>&#123;</span><br><span class="line">    <span class="comment">//省略把数据读取到raw数组</span></span><br><span class="line">    <span class="built_in">build</span>(<span class="number">1</span>o</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>容易发现建图的复杂度为$\mathcal{O}(n)$</p>
-<h3 id="区间查询"><a href="#区间查询" class="headerlink" title="区间查询"></a>区间查询</h3><p><img   src="/%E8%AE%B0%E5%AF%B9%E7%BA%BF%E6%AE%B5%E6%A0%91%E8%87%AA%E5%B7%B1%E7%9A%84%E7%90%86%E8%A7%A3/graph.png"  alt="还是那张图"><br>我们现在已经能完成这些节点上区间的查询了。<br>不难发现，我们只需要把一些线段树上区间求并集，就可以得到任意区间。<br>我们只要找离根节点的最短路的距离最低的、且是查询区间的子集的节点，就是那几个构成查询区间的线段树上区间。<br>这个部分比较简单，我就直接给代码了，还是以求和为例：</p>
+<h3 id="区间查询">区间查询</h3>
+<p><img   src="%E8%AE%B0%E5%AF%B9%E7%BA%BF%E6%AE%B5%E6%A0%91%E8%87%AA%E5%B7%B1%E7%9A%84%E7%90%86%E8%A7%A3/graph.png"  alt="还是那张图"><br>
+我们现在已经能完成这些节点上区间的查询了。<br>
+不难发现，我们只需要把一些线段树上区间求并集，就可以得到任意区间。<br>
+我们只要找离根节点的最短路的距离最低的、且是查询区间的子集的节点，就是那几个构成查询区间的线段树上区间。<br>
+这个部分比较简单，我就直接给代码了，还是以求和为例：</p>
 <figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> raw[N<span class="number">+1</span>];</span><br><span class="line"><span class="type">int</span> seg[<span class="number">4</span>*N];</span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">get</span><span class="params">(<span class="type">int</span> left,<span class="type">int</span> right,<span class="type">int</span> query_left,<span class="type">int</span> query_right,<span class="type">int</span> index)</span></span>&#123;</span><br><span class="line">    <span class="comment">//是否是查询区间的子集</span></span><br><span class="line">    <span class="keyword">if</span>(left&lt;=query_left&amp;&amp;right&lt;=query_right)&#123;</span><br><span class="line">        <span class="keyword">return</span> seg[index];</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="type">int</span> mid=left+(right-left)/<span class="number">2</span>;</span><br><span class="line">    <span class="type">int</span> ret=<span class="number">0</span>;</span><br><span class="line">    <span class="comment">//左叶子与查询区间有交集。query_right改成mid是缩小查询区间（分治思想）。</span></span><br><span class="line">    <span class="keyword">if</span>(query_left&lt;=mid) ret+=<span class="built_in">get</span>(left,mid,query_left,mid,<span class="number">2</span>*index);</span><br><span class="line">    <span class="comment">//右叶子与查询区间有交集。query_left改成mid+1同理</span></span><br><span class="line">    <span class="keyword">if</span>(query_right&gt;=mid<span class="number">+1</span>) ret+=<span class="built_in">get</span>(mid<span class="number">+1</span>,right,mid<span class="number">+1</span>,query_right,<span class="number">2</span>*index<span class="number">+1</span>);</span><br><span class="line">    <span class="keyword">return</span> ret;</span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">main</span><span class="params">()</span></span>&#123;</span><br><span class="line">    <span class="comment">//省略把数据读取到raw数组</span></span><br><span class="line">    <span class="built_in">build</span>(<span class="number">1</span>,n,<span class="number">1</span>);<span class="comment">//n为数组长度</span></span><br><span class="line">    <span class="built_in">get</span>(<span class="number">1</span>,n,a,b,<span class="number">1</span>);<span class="comment">//查询区间为[a,b]</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>需要注意一下query_left和query_right在分治的过程中的变动，这是一个很重要的细节。<br>区间查询的复杂度为$\mathcal{O}(\log N)$</p>
-<h3 id="区间修改与懒标记"><a href="#区间修改与懒标记" class="headerlink" title="区间修改与懒标记"></a>区间修改与懒标记</h3><p>我已信奉鸽子教，，，<br>所以我先不写</p>
-<h2 id="致谢"><a href="#致谢" class="headerlink" title="致谢"></a>致谢</h2><p>十分感谢<a class="link"   target="_blank" rel="noopener" href="https://oi-wiki.org/ds/seg/" >OI Wiki<i class="fas fa-external-link-alt"></i></a>，这个项目使我学到了很多知识。</p>
+<p>需要注意一下query_left和query_right在分治的过程中的变动，这是一个很重要的细节。<br>
+区间查询的复杂度为$\mathcal{O}(\log N)$</p>
+<h3 id="区间修改与懒标记">区间修改与懒标记</h3>
+<p>我已信奉鸽子教，，，<br>
+所以我先不写</p>
+<h2 id="致谢">致谢</h2>
+<p>十分感谢<a class="link"   target="_blank" rel="noopener" href="https://oi-wiki.org/ds/seg/" >OI Wiki<i class="fas fa-external-link-alt"></i></a>，这个项目使我学到了很多知识。</p>
 
                     
                 </div>
@@ -649,5 +665,20 @@
         z-index: 9999 !important;
     }
 </style>
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+        tex2jax: {
+            inlineMath: [ ["$","$"], ["\\(","\\)"] ],
+            skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+            processEscapes: true
+        }
+    });
+    MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax();
+        for (var i = 0; i < all.length; ++i)
+            all[i].SourceElement().parentNode.className += ' has-jax';
+    });
+</script>
+<script src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
 </body>
 </html>

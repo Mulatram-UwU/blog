@@ -32,11 +32,7 @@
     KEEP.language_code_block = {"copy":"复制代码","copied":"已复制","fold":"折叠代码块","folded":"已折叠"}
     KEEP.language_copy_copyright = {"copy":"复制版权信息","copied":"已复制","title":"原文标题","author":"原文作者","link":"原文链接"}
   </script>
-<!-- hexo injector head_end start -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
-
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
-<!-- hexo injector head_end end --><meta name="generator" content="Hexo 7.3.0"></head>
+<meta name="generator" content="Hexo 7.3.0"></head>
 
 
 <body>
@@ -235,31 +231,31 @@
                     
                          <p>我们的TeaCon参赛作品<a class="link"   target="_blank" rel="noopener" href="https://github.com/hotpad100c/minecartrevolution-neo" >minecart-revolution<i class="fas fa-external-link-alt"></i></a>仓库最近有格式问题看的人头疼，全改过来又太累。于是我整了个能自己修lint并提PR的Github Actions机器人，很好用，遂分享。</p>
 <span id="more"></span>
-<h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>我们的TeaCon参赛作品<a class="link"   target="_blank" rel="noopener" href="https://github.com/hotpad100c/minecartrevolution-neo" >minecart-revolution<i class="fas fa-external-link-alt"></i></a>仓库最近有格式问题看的人头疼，全改过来又太累。于是我整了个能自己修lint并提PR的Github Actions机器人，很好用，遂分享。</p>
-<h2 id="设计思路"><a href="#设计思路" class="headerlink" title="设计思路"></a>设计思路</h2><p>核心就是 <a class="link"   target="_blank" rel="noopener" href="https://github.com/super-linter/super-linter" >super-linter<i class="fas fa-external-link-alt"></i></a>，这东西本身就集成了几十种 lint 工具（从 Java 到 JSON 到 Markdown 无一例外）。</p>
+<h2 id="前言">前言</h2>
+<p>我们的TeaCon参赛作品<a class="link"   target="_blank" rel="noopener" href="https://github.com/hotpad100c/minecartrevolution-neo" >minecart-revolution<i class="fas fa-external-link-alt"></i></a>仓库最近有格式问题看的人头疼，全改过来又太累。于是我整了个能自己修lint并提PR的Github Actions机器人，很好用，遂分享。</p>
+<h2 id="设计思路">设计思路</h2>
+<p>核心就是 <a class="link"   target="_blank" rel="noopener" href="https://github.com/super-linter/super-linter" >super-linter<i class="fas fa-external-link-alt"></i></a>，这东西本身就集成了几十种 lint 工具（从 Java 到 JSON 到 Markdown 无一例外）。</p>
 <p>但 super-linter 默认只报告错误，不会给你修。不难发现，super-linter 也暴露了 <code>FIX_*</code> 系列环境变量。于是我开了这些：</p>
 <figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">FIX_GOOGLE_JAVA_FORMAT:</span> <span class="literal">true</span>  <span class="comment"># Java 代码格式化</span></span><br><span class="line"><span class="attr">FIX_JSON:</span> <span class="literal">true</span>                <span class="comment"># JSON 格式化</span></span><br><span class="line"><span class="attr">FIX_MARKDOWN:</span> <span class="literal">true</span>            <span class="comment"># Markdown 格式化</span></span><br><span class="line"><span class="attr">FIX_NATURAL_LANGUAGE:</span> <span class="literal">true</span>    <span class="comment"># 自然语言拼写修正</span></span><br><span class="line"><span class="attr">FIX_BIOME_FORMAT:</span> <span class="literal">true</span>        <span class="comment"># Biome 格式化</span></span><br></pre></td></tr></table></figure>
-
 <p>开着这些跑一圈 super-linter，文件就被原地修好了。然后呢？直接用 <a class="link"   target="_blank" rel="noopener" href="https://github.com/stefanzweifel/git-auto-commit-action" >git-auto-commit-action<i class="fas fa-external-link-alt"></i></a> 把改动提交到新分支，再用 <code>gh pr create</code> 提个 PR，一个能自己修自己提的机器人就出来了。</p>
-<h2 id="坑和细化"><a href="#坑和细化" class="headerlink" title="坑和细化"></a>坑和细化</h2><p><strong>递归问题</strong>无疑是第一个坑：这个 workflow 是 <code>on: push</code> 触发的，如果自动提交触发新的 push，那就无限循环了。解法很简单——新分支统一用 <code>auto-lint-*</code> 前缀，trigger 里直接排除：</p>
+<h2 id="坑和细化">坑和细化</h2>
+<p><strong>递归问题</strong>无疑是第一个坑：这个 workflow 是 <code>on: push</code> 触发的，如果自动提交触发新的 push，那就无限循环了。解法很简单——新分支统一用 <code>auto-lint-*</code> 前缀，trigger 里直接排除：</p>
 <figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">on:</span></span><br><span class="line">  <span class="attr">push:</span></span><br><span class="line">    <span class="attr">branches-ignore:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">auto-lint-*</span></span><br></pre></td></tr></table></figure>
-
 <p><strong>两个 job 的拆分</strong>也挺关键的。第一个 job <code>lint-report</code> 只做诊断，生成 report 存成 artifact；第二个 job <code>fix-lint-issues</code> 才真正修。分开的好处是：就算修的那步挂了，report 还是能拿到（毕竟修完了 diff 直接看也行，但我就是喜欢留个报告，，，）。</p>
 <p>第二个 job 需要 <code>contents: write</code> 和 <code>pull-requests: write</code> 权限，第一个只用读就够。权限最小化这事还是有追求的。</p>
 <p><strong>旧 PR 的清理</strong>：每次 push 都会开新 PR，旧的不关就堆起来了。我用 <code>gh pr list --label auto-lint</code> 找出旧的，逐个 close，再删掉对应的 remote branch。然后新 PR 用同样的 label <code>auto-lint</code>，方便一眼认出是机器人干的。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">gh <span class="built_in">pr</span> list --state open --label auto-lint --json number \</span><br><span class="line">  --jq <span class="string">&#x27;.[].number&#x27;</span> | <span class="keyword">while</span> <span class="built_in">read</span> -r pr_num; <span class="keyword">do</span></span><br><span class="line">    gh <span class="built_in">pr</span> close <span class="string">&quot;<span class="variable">$pr_num</span>&quot;</span> --comment <span class="string">&quot;Superseded by a newer auto-lint PR.&quot;</span></span><br><span class="line"><span class="keyword">done</span></span><br></pre></td></tr></table></figure>
-
 <p><strong>同run_id但是重新运行</strong>：要是你重跑一个已经跑过的 workflow，<code>github.run_id</code> 是一样的，分支名冲突就炸了。我直接把 <code>github.run_attempt</code> 也拼进分支名里：</p>
 <figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="string">echo</span> <span class="string">&quot;NEW_BRANCH=auto-lint-$<span class="template-variable">&#123;&#123; github.run_id &#125;&#125;</span>-$<span class="template-variable">&#123;&#123; github.run_attempt &#125;&#125;</span>&quot;</span> <span class="string">&gt;&gt;</span> <span class="string">$GITHUB_ENV</span></span><br></pre></td></tr></table></figure>
-
 <p>重跑时 <code>run_attempt</code> 会自增，分支名就不同了。</p>
 <p><strong>Actions无法修改Actions，会报错</strong>：super-linter 如果顺手修了 <code>.github/workflows/</code> 下的文件，后面的 <code>git-auto-commit-action</code> 推上去会直接炸——Github 不允许 workflow 自己改 workflow 文件。解决方式也很直接，让 super-linter 忽略这个目录就行：</p>
 <figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">FILTER_REGEX_EXCLUDE:</span> <span class="string">.*\.github/workflows/.*</span></span><br></pre></td></tr></table></figure>
-
-<h2 id="顺便一提"><a href="#顺便一提" class="headerlink" title="顺便一提"></a>顺便一提</h2><ul>
+<h2 id="顺便一提">顺便一提</h2>
+<ul>
 <li>如果没有lint问题是不会发新PR创建新分支的。</li>
 <li><a class="link"   target="_blank" rel="noopener" href="https://github.com/Done-0/fuck-u-code" >fuck-u-code<i class="fas fa-external-link-alt"></i></a> 非常好工具，跑得快并且有意思，使我项目旋转，爱来自瓷器。\</li>
-<li>如果你想要我的Github Actions文件，可以下载<a href="super-linter.yml" download>super-linter.yml</a>和<a href="fuck-u-code.yml" download>fuck-u-code.yml</a><br>这很有用，我希望帮助更多人。</li>
+<li>如果你想要我的Github Actions文件，可以下载<a href="super-linter.yml" download>super-linter.yml</a>和<a href="fuck-u-code.yml" download>fuck-u-code.yml</a><br>
+这很有用，我希望帮助更多人。</li>
 </ul>
 
                     
@@ -640,5 +636,20 @@
         z-index: 9999 !important;
     }
 </style>
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+        tex2jax: {
+            inlineMath: [ ["$","$"], ["\\(","\\)"] ],
+            skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+            processEscapes: true
+        }
+    });
+    MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax();
+        for (var i = 0; i < all.length; ++i)
+            all[i].SourceElement().parentNode.className += ' has-jax';
+    });
+</script>
+<script src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
 </body>
 </html>

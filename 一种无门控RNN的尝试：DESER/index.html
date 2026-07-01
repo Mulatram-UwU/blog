@@ -32,11 +32,7 @@
     KEEP.language_code_block = {"copy":"复制代码","copied":"已复制","fold":"折叠代码块","folded":"已折叠"}
     KEEP.language_copy_copyright = {"copy":"复制版权信息","copied":"已复制","title":"原文标题","author":"原文作者","link":"原文链接"}
   </script>
-<!-- hexo injector head_end start -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
-
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
-<!-- hexo injector head_end end --><meta name="generator" content="Hexo 7.3.0"></head>
+<meta name="generator" content="Hexo 7.3.0"></head>
 
 
 <body>
@@ -241,19 +237,53 @@
                     
                          <p>提出了一种没有门控的极简全新RNN架构。</p>
 <span id="more"></span>
-<h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>我在尝试用RNN做一个比Transformer好的语言模型（当然这近乎不可能），然后我在语文课上想到了这个架构（语文课可以想出除语文题外的任何事情，，，）。</p>
-<h2 id="它怎么工作"><a href="#它怎么工作" class="headerlink" title="它怎么工作"></a>它怎么工作</h2><p>DESER 的核心就一句话：<strong>用一个向量 P 来记东西，用另一个向量来读它。</strong><br>每一步预测下一个token，把当前token的embedding $\mathbf{h}$和候选token的embedding $\mathbf{E}(i)$拼起来，跟P点积：<br>$$\text{score}(i)&#x3D;\text{Concat}(\mathbf{h},\mathbf{E}(i))^\top\cdot\mathbf{P}$$<br>不用Linear做读出，logits 直接出。P的前 $d$ 维和 $\mathbf{h}$ 交互，后 $d$ 维和候选交互。<br>P 的更新就是最简单的渗漏积分（leaky integration）：<br>$$<br>\mathbf{P}_t&#x3D;\alpha\cdot\mathbf{P}_{t-1}+\mathbf{D}_P(\mathbf{E}(\text{curr}))<br>$$<br>$\mathbf{D}_P$ 是 <code>Linear(d, 2d) + GELU</code>，每个时间步从当前 token 算出一个 delta 塞进 P。旧的值乘 $\alpha$ 衰减。<br>没了。没有 sigmoid，没有 softmax，没有 gate。</p>
-<h2 id="试验"><a href="#试验" class="headerlink" title="试验"></a>试验</h2><h3 id="Adding-Problem"><a href="#Adding-Problem" class="headerlink" title="Adding Problem"></a>Adding Problem</h3><p>一串随机数，随机挑两个标 1，求和。测的是长程依赖。<br>结果：**$\alpha&#x3D;1.0$ 最优**。加法问题丢了任何一个数都白干。L&#x3D;100 时 MSE 约 0.002，LSTM 约 0.022。<br><img   src="/%E4%B8%80%E7%A7%8D%E6%97%A0%E9%97%A8%E6%8E%A7RNN%E7%9A%84%E5%B0%9D%E8%AF%95%EF%BC%9ADESER/adding_combined.png"  alt="请输入文本"><br>但这个比 LSTM 低不说明 DESER 更厉害——回归任务本来就和无门控加法对味。</p>
-<h3 id="Copy-Problem"><a href="#Copy-Problem" class="headerlink" title="Copy Problem"></a>Copy Problem</h3><p>给一串 token，中间插分隔符，原样输出。测记忆。<br>结果：<strong>0% 精确匹配</strong>，全部 $\alpha$ 一样。<br><img   src="/%E4%B8%80%E7%A7%8D%E6%97%A0%E9%97%A8%E6%8E%A7RNN%E7%9A%84%E5%B0%9D%E8%AF%95%EF%BC%9ADESER/copy_L2.png"  alt="这十分诡异1"><br><img   src="/%E4%B8%80%E7%A7%8D%E6%97%A0%E9%97%A8%E6%8E%A7RNN%E7%9A%84%E5%B0%9D%E8%AF%95%EF%BC%9ADESER/copy_L5.png"  alt="这十分诡异2"><br>P 是个向量，所有 token 的 delta 全叠一起，不是按顺序存的。你说能从里面读出”出现过 token 2”，但 2 前面是几后面是几，它不知道。LSTM 在 copy_len&#x3D;2 能到 ~2%。</p>
-<h3 id="Char-LM"><a href="#Char-LM" class="headerlink" title="Char LM"></a>Char LM</h3><p>TinyShakespeare，前 50000 个字符，vocab&#x3D;59，d&#x3D;32，seq_len&#x3D;64。六个 $\alpha$，300 epoch。<br>最好的 <strong>$\alpha&#x3D;0.3$，PPL 15.9</strong>。同参 LSTM 是 5.9。<br>$\alpha&#x3D;0.3$ 约等于只记住前两三个 token。再长就被噪声盖住了。<br>后来又试了几个改进：</p>
+<h2 id="前言">前言</h2>
+<p>我在尝试用RNN做一个比Transformer好的语言模型（当然这近乎不可能），然后我在语文课上想到了这个架构（语文课可以想出除语文题外的任何事情，，，）。</p>
+<h2 id="它怎么工作">它怎么工作</h2>
+<p>DESER 的核心就一句话：<strong>用一个向量 P 来记东西，用另一个向量来读它。</strong><br>
+每一步预测下一个token，把当前token的embedding $\mathbf{h}$和候选token的embedding $\mathbf{E}(i)$拼起来，跟P点积：<br>
+$$\text{score}(i)=\text{Concat}(\mathbf{h},\mathbf{E}(i))^\top\cdot\mathbf{P}$$<br>
+不用Linear做读出，logits 直接出。P的前 $d$ 维和 $\mathbf{h}$ 交互，后 $d$ 维和候选交互。<br>
+P 的更新就是最简单的渗漏积分（leaky integration）：<br>
+$$<br>
+\mathbf{P}_t=\alpha\cdot\mathbf{P}_{t-1}+\mathbf{D}_P(\mathbf{E}(\text{curr}))<br>
+$$<br>
+$\mathbf{D}_P$ 是 <code>Linear(d, 2d) + GELU</code>，每个时间步从当前 token 算出一个 delta 塞进 P。旧的值乘 $\alpha$ 衰减。<br>
+没了。没有 sigmoid，没有 softmax，没有 gate。</p>
+<h2 id="试验">试验</h2>
+<h3 id="Adding-Problem">Adding Problem</h3>
+<p>一串随机数，随机挑两个标 1，求和。测的是长程依赖。<br>
+结果：<strong>$\alpha=1.0$ 最优</strong>。加法问题丢了任何一个数都白干。L=100 时 MSE 约 0.002，LSTM 约 0.022。<br>
+<img   src="%E4%B8%80%E7%A7%8D%E6%97%A0%E9%97%A8%E6%8E%A7RNN%E7%9A%84%E5%B0%9D%E8%AF%95%EF%BC%9ADESER/adding_combined.png"  alt="请输入文本"><br>
+但这个比 LSTM 低不说明 DESER 更厉害——回归任务本来就和无门控加法对味。</p>
+<h3 id="Copy-Problem">Copy Problem</h3>
+<p>给一串 token，中间插分隔符，原样输出。测记忆。<br>
+结果：<strong>0% 精确匹配</strong>，全部 $\alpha$ 一样。<br>
+<img   src="%E4%B8%80%E7%A7%8D%E6%97%A0%E9%97%A8%E6%8E%A7RNN%E7%9A%84%E5%B0%9D%E8%AF%95%EF%BC%9ADESER/copy_L2.png"  alt="这十分诡异1"><br>
+<img   src="%E4%B8%80%E7%A7%8D%E6%97%A0%E9%97%A8%E6%8E%A7RNN%E7%9A%84%E5%B0%9D%E8%AF%95%EF%BC%9ADESER/copy_L5.png"  alt="这十分诡异2"><br>
+P 是个向量，所有 token 的 delta 全叠一起，不是按顺序存的。你说能从里面读出&quot;出现过 token 2&quot;，但 2 前面是几后面是几，它不知道。LSTM 在 copy_len=2 能到 ~2%。</p>
+<h3 id="Char-LM">Char LM</h3>
+<p>TinyShakespeare，前 50000 个字符，vocab=59，d=32，seq_len=64。六个 $\alpha$，300 epoch。<br>
+最好的 <strong>$\alpha=0.3$，PPL 15.9</strong>。同参 LSTM 是 5.9。<br>
+$\alpha=0.3$ 约等于只记住前两三个 token。再长就被噪声盖住了。<br>
+后来又试了几个改进：</p>
 <ul>
-<li><strong>加二元矩阵 W</strong>：score 多了一个 <code>prev @ W @ E(i)</code> 项，W 是静态矩阵不参与 P 的更新。PPL 从 15.9 掉到 <strong>14.19</strong>（$\alpha&#x3D;0.5$）。W 走独立通道不受叠加干扰——本质是个学出来的 bigram。</li>
+<li><strong>加二元矩阵 W</strong>：score 多了一个 <code>prev @ W @ E(i)</code> 项，W 是静态矩阵不参与 P 的更新。PPL 从 15.9 掉到 <strong>14.19</strong>（$\alpha=0.5$）。W 走独立通道不受叠加干扰——本质是个学出来的 bigram。</li>
 <li><strong>扩 d</strong>：32→64→128。PPL 从 14.19 到 13.59 就停了。不是参数不够。</li>
-<li><strong>双通道 P</strong>：一条 $\alpha&#x3D;0.5$ 一条 $\alpha&#x3D;0.95$，各自更新。PPL 14.44，比单通道还坏</li>
+<li><strong>双通道 P</strong>：一条 $\alpha=0.5$ 一条 $\alpha=0.95$，各自更新。PPL 14.44，比单通道还坏</li>
 </ul>
-<p><img   src="/%E4%B8%80%E7%A7%8D%E6%97%A0%E9%97%A8%E6%8E%A7RNN%E7%9A%84%E5%B0%9D%E8%AF%95%EF%BC%9ADESER/large_lm.png" ><br><img   src="/%E4%B8%80%E7%A7%8D%E6%97%A0%E9%97%A8%E6%8E%A7RNN%E7%9A%84%E5%B0%9D%E8%AF%95%EF%BC%9ADESER/small_lm.png" ><br><img   src="/%E4%B8%80%E7%A7%8D%E6%97%A0%E9%97%A8%E6%8E%A7RNN%E7%9A%84%E5%B0%9D%E8%AF%95%EF%BC%9ADESER/large_lm_bar.png" ><br><img   src="/%E4%B8%80%E7%A7%8D%E6%97%A0%E9%97%A8%E6%8E%A7RNN%E7%9A%84%E5%B0%9D%E8%AF%95%EF%BC%9ADESER/small_lm_bar.png" ></p>
-<h2 id="为什么打不过-LSTM"><a href="#为什么打不过-LSTM" class="headerlink" title="为什么打不过 LSTM"></a>为什么打不过 LSTM</h2><p>加性叠加没有选择。<br>LSTM 的 forget gate 按维度选择性忘——这个维的历史没用就扔，有用留着。input gate 同理——写不写进去按维决定。<br>这就是老资历的智慧吗，，，果然门不是可以遗弃的。<br>DESER 只有一个标量 $\alpha$，所有维度一个衰减速率。你没法区分”这个东西要记住”和”这个是噪声赶紧丢”。<br>所以：$\alpha&#x3D;0.3$ 最好（再长就是噪声）、Copy 0%（叠加态保不住顺序）、扩 d 没用（不是容量问题）、双通道没用（多一条路又不能帮你挑）。</p>
-<h2 id="顺便一提"><a href="#顺便一提" class="headerlink" title="顺便一提"></a>顺便一提</h2><p>opencode+deepseek v4 pro真的不错，是由它们实现的代码，我也让他们生成了一篇<a href="/%E4%B8%80%E7%A7%8D%E6%97%A0%E9%97%A8%E6%8E%A7RNN%E7%9A%84%E5%B0%9D%E8%AF%95%EF%BC%9ADESER/paper.pdf">小论文</a></p>
+<p><img   src="%E4%B8%80%E7%A7%8D%E6%97%A0%E9%97%A8%E6%8E%A7RNN%E7%9A%84%E5%B0%9D%E8%AF%95%EF%BC%9ADESER/large_lm.png"  alt=""><br>
+<img   src="%E4%B8%80%E7%A7%8D%E6%97%A0%E9%97%A8%E6%8E%A7RNN%E7%9A%84%E5%B0%9D%E8%AF%95%EF%BC%9ADESER/small_lm.png"  alt=""><br>
+<img   src="%E4%B8%80%E7%A7%8D%E6%97%A0%E9%97%A8%E6%8E%A7RNN%E7%9A%84%E5%B0%9D%E8%AF%95%EF%BC%9ADESER/large_lm_bar.png"  alt=""><br>
+<img   src="%E4%B8%80%E7%A7%8D%E6%97%A0%E9%97%A8%E6%8E%A7RNN%E7%9A%84%E5%B0%9D%E8%AF%95%EF%BC%9ADESER/small_lm_bar.png"  alt=""></p>
+<h2 id="为什么打不过-LSTM">为什么打不过 LSTM</h2>
+<p>加性叠加没有选择。<br>
+LSTM 的 forget gate 按维度选择性忘——这个维的历史没用就扔，有用留着。input gate 同理——写不写进去按维决定。<br>
+这就是老资历的智慧吗，，，果然门不是可以遗弃的。<br>
+DESER 只有一个标量 $\alpha$，所有维度一个衰减速率。你没法区分&quot;这个东西要记住&quot;和&quot;这个是噪声赶紧丢&quot;。<br>
+所以：$\alpha=0.3$ 最好（再长就是噪声）、Copy 0%（叠加态保不住顺序）、扩 d 没用（不是容量问题）、双通道没用（多一条路又不能帮你挑）。</p>
+<h2 id="顺便一提">顺便一提</h2>
+<p>opencode+deepseek v4 pro真的不错，是由它们实现的代码，我也让他们生成了一篇<a href="/%E4%B8%80%E7%A7%8D%E6%97%A0%E9%97%A8%E6%8E%A7RNN%E7%9A%84%E5%B0%9D%E8%AF%95%EF%BC%9ADESER/paper.pdf">小论文</a></p>
 
                     
                 </div>
@@ -659,5 +689,20 @@
         z-index: 9999 !important;
     }
 </style>
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+        tex2jax: {
+            inlineMath: [ ["$","$"], ["\\(","\\)"] ],
+            skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+            processEscapes: true
+        }
+    });
+    MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax();
+        for (var i = 0; i < all.length; ++i)
+            all[i].SourceElement().parentNode.className += ' has-jax';
+    });
+</script>
+<script src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
 </body>
 </html>
