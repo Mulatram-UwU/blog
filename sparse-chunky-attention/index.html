@@ -4,12 +4,12 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
     <meta name="keywords" content="Mulatram, 技术博客, 计算机科学, 技术分享">
-    <meta name="description" content="我们的TeaCon参赛作品[minecart-revolution](https://github.com/hotpad100c/minecartrevolution-neo)仓库最近有格式问题看的人头疼，全改过来又太累。于是我整了个能自己修lint并提PR的Github Actions机器人，很好用，遂分享。">
+    <meta name="description" content="我们提出了Sparse Chunky Attention(稀疏分块注意力)来加速注意力计算。我们应用分块思想，将高维的嵌入空间分割成多个边长为chunk_size的超立方体块。仅计算Q所在块及其面相邻的块内的所有K-V对的注意力。尽管舍去了其他非面相邻块内的K-V对，但在1024维且chunk_size=512时随机KVQ实验中得到了92%的成功率。">
     <meta name="author" content="Mulatram">
     
     <title>
         
-            一个基于Github Actions的能修复lint问题并提PR解决的机器人 |
+            Sparse Chunky Attention: 一种基于分块思想且跳略非面相邻块的线性稀疏注意力机制 |
         
         Mulatram的技术博客
     </title>
@@ -159,7 +159,7 @@
             <div class="post-content-bottom border-box">
                 
                     <div class="post-title">
-                        一个基于Github Actions的能修复lint问题并提PR解决的机器人
+                        Sparse Chunky Attention: 一种基于分块思想且跳略非面相邻块的线性稀疏注意力机制
                     </div>
                 
 
@@ -187,13 +187,13 @@
         
             <span class="meta-info-item post-create-date">
                 <i class="icon fa-solid fa-calendar-plus"></i>&nbsp;
-                <span class="datetime">2026-06-21 23:56:01</span>
+                <span class="datetime">2026-09-23 21:00:04</span>
             </span>
 
             
                 <span class="meta-info-item post-update-date">
                     <i class="icon fa-solid fa-file-pen"></i>&nbsp;
-                    <span class="datetime" data-updated="Mon Jun 22 2026 14:44:47 GMT+0800">2026-06-22 14:44:47</span>
+                    <span class="datetime" data-updated="Wed Sep 23 2026 22:52:48 GMT+0800">2026-09-23 22:52:48</span>
                 </span>
             
         
@@ -204,7 +204,10 @@
             <span class="post-tag meta-info-item border-box">
                 <ul class="post-tag-ul">
                     
-                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/CI-CD/">CI/CD</a></li>
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/AI/">AI</a></li>
+                        
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E6%B7%B1%E5%BA%A6%E5%AD%A6%E4%B9%A0/">深度学习</a></li>
                         
                     
                 </ul>
@@ -229,34 +232,24 @@
                     
 
                     
-                         <p>我们的TeaCon参赛作品<a class="link"   target="_blank" rel="noopener" href="https://github.com/hotpad100c/minecartrevolution-neo" >minecart-revolution<i class="fas fa-external-link-alt"></i></a>仓库最近有格式问题看的人头疼，全改过来又太累。于是我整了个能自己修lint并提PR的Github Actions机器人，很好用，遂分享。</p>
+                         <p>我们提出了Sparse Chunky Attention(稀疏分块注意力)来加速注意力计算。我们应用分块思想，将高维的嵌入空间分割成多个边长为chunk_size的超立方体块。仅计算Q所在块及其面相邻的块内的所有K-V对的注意力。尽管舍去了其他非面相邻块内的K-V对，但在1024维且chunk_size=512时随机KVQ实验中得到了82%的成功率。</p>
 <span id="more"></span>
-<h2 id="前言"><a class="markdownIt-Anchor" href="#前言"></a> 前言</h2>
-<p>我们的TeaCon参赛作品<a class="link"   target="_blank" rel="noopener" href="https://github.com/hotpad100c/minecartrevolution-neo" >minecart-revolution<i class="fas fa-external-link-alt"></i></a>仓库最近有格式问题看的人头疼，全改过来又太累。于是我整了个能自己修lint并提PR的Github Actions机器人，很好用，遂分享。</p>
-<h2 id="设计思路"><a class="markdownIt-Anchor" href="#设计思路"></a> 设计思路</h2>
-<p>核心就是 <a class="link"   target="_blank" rel="noopener" href="https://github.com/super-linter/super-linter" >super-linter<i class="fas fa-external-link-alt"></i></a>，这东西本身就集成了几十种 lint 工具（从 Java 到 JSON 到 Markdown 无一例外）。</p>
-<p>但 super-linter 默认只报告错误，不会给你修。不难发现，super-linter 也暴露了 <code>FIX_*</code> 系列环境变量。于是我开了这些：</p>
-<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">FIX_GOOGLE_JAVA_FORMAT:</span> <span class="literal">true</span>  <span class="comment"># Java 代码格式化</span></span><br><span class="line"><span class="attr">FIX_JSON:</span> <span class="literal">true</span>                <span class="comment"># JSON 格式化</span></span><br><span class="line"><span class="attr">FIX_MARKDOWN:</span> <span class="literal">true</span>            <span class="comment"># Markdown 格式化</span></span><br><span class="line"><span class="attr">FIX_NATURAL_LANGUAGE:</span> <span class="literal">true</span>    <span class="comment"># 自然语言拼写修正</span></span><br><span class="line"><span class="attr">FIX_BIOME_FORMAT:</span> <span class="literal">true</span>        <span class="comment"># Biome 格式化</span></span><br></pre></td></tr></table></figure>
-<p>开着这些跑一圈 super-linter，文件就被原地修好了。然后呢？直接用 <a class="link"   target="_blank" rel="noopener" href="https://github.com/stefanzweifel/git-auto-commit-action" >git-auto-commit-action<i class="fas fa-external-link-alt"></i></a> 把改动提交到新分支，再用 <code>gh pr create</code> 提个 PR，一个能自己修自己提的机器人就出来了。</p>
-<h2 id="坑和细化"><a class="markdownIt-Anchor" href="#坑和细化"></a> 坑和细化</h2>
-<p><strong>递归问题</strong>无疑是第一个坑：这个 workflow 是 <code>on: push</code> 触发的，如果自动提交触发新的 push，那就无限循环了。解法很简单——新分支统一用 <code>auto-lint-*</code> 前缀，trigger 里直接排除：</p>
-<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">on:</span></span><br><span class="line">  <span class="attr">push:</span></span><br><span class="line">    <span class="attr">branches-ignore:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="string">auto-lint-*</span></span><br></pre></td></tr></table></figure>
-<p><strong>两个 job 的拆分</strong>也挺关键的。第一个 job <code>lint-report</code> 只做诊断，生成 report 存成 artifact；第二个 job <code>fix-lint-issues</code> 才真正修。分开的好处是：就算修的那步挂了，report 还是能拿到（毕竟修完了 diff 直接看也行，但我就是喜欢留个报告，，，）。</p>
-<p>第二个 job 需要 <code>contents: write</code> 和 <code>pull-requests: write</code> 权限，第一个只用读就够。权限最小化这事还是有追求的。</p>
-<p><strong>旧 PR 的清理</strong>：每次 push 都会开新 PR，旧的不关就堆起来了。我用 <code>gh pr list --label auto-lint</code> 找出旧的，逐个 close，再删掉对应的 remote branch。然后新 PR 用同样的 label <code>auto-lint</code>，方便一眼认出是机器人干的。</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">gh <span class="built_in">pr</span> list --state open --label auto-lint --json number \</span><br><span class="line">  --jq <span class="string">&#x27;.[].number&#x27;</span> | <span class="keyword">while</span> <span class="built_in">read</span> -r pr_num; <span class="keyword">do</span></span><br><span class="line">    gh <span class="built_in">pr</span> close <span class="string">&quot;<span class="variable">$pr_num</span>&quot;</span> --comment <span class="string">&quot;Superseded by a newer auto-lint PR.&quot;</span></span><br><span class="line"><span class="keyword">done</span></span><br></pre></td></tr></table></figure>
-<p><strong>同run_id但是重新运行</strong>：要是你重跑一个已经跑过的 workflow，<code>github.run_id</code> 是一样的，分支名冲突就炸了。我直接把 <code>github.run_attempt</code> 也拼进分支名里：</p>
-<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="string">echo</span> <span class="string">&quot;NEW_BRANCH=auto-lint-$<span class="template-variable">&#123;&#123; github.run_id &#125;&#125;</span>-$<span class="template-variable">&#123;&#123; github.run_attempt &#125;&#125;</span>&quot;</span> <span class="string">&gt;&gt;</span> <span class="string">$GITHUB_ENV</span></span><br></pre></td></tr></table></figure>
-<p>重跑时 <code>run_attempt</code> 会自增，分支名就不同了。</p>
-<p><strong>Actions无法修改Actions，会报错</strong>：super-linter 如果顺手修了 <code>.github/workflows/</code> 下的文件，后面的 <code>git-auto-commit-action</code> 推上去会直接炸——Github 不允许 workflow 自己改 workflow 文件。解决方式也很直接，让 super-linter 忽略这个目录就行：</p>
-<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">FILTER_REGEX_EXCLUDE:</span> <span class="string">.*\.github/workflows/.*</span></span><br></pre></td></tr></table></figure>
-<h2 id="顺便一提"><a class="markdownIt-Anchor" href="#顺便一提"></a> 顺便一提</h2>
-<ul>
-<li>如果没有lint问题是不会发新PR创建新分支的。</li>
-<li><a class="link"   target="_blank" rel="noopener" href="https://github.com/Done-0/fuck-u-code" >fuck-u-code<i class="fas fa-external-link-alt"></i></a> 非常好工具，跑得快并且有意思，使我项目旋转，爱来自瓷器。\</li>
-<li>如果你想要我的Github Actions文件，可以下载<a href="super-linter.yml" download>super-linter.yml</a>和<a href="fuck-u-code.yml" download>fuck-u-code.yml</a><br />
-这很有用，我希望帮助更多人。</li>
-</ul>
+<h1>摘要</h1>
+<p>我们提出了Sparse Chunky Attention(稀疏分块注意力)来加速注意力计算。我们应用分块思想，将高维的嵌入空间分割成多个边长为chunk_size的超立方体块。仅计算Q所在块及其面相邻的块内的所有K-V对的注意力。尽管舍去了其他非面相邻块内的K-V对，但在1024维且chunk_size=512时随机KVQ实验中得到了82%的成功率。</p>
+<h1>背景</h1>
+<p>目前LLM全部在使用的Transformer架构，由于传统注意力的缺陷，导致时间复杂度是平方级别，各家厂商也推出了自己的稀疏注意力来加快推理/训练。当然，他们多是通过稀疏掩码等方式选择性跳略。</p>
+<h1>介绍</h1>
+<p>把高维空间切分为多个边长为chunk_size的超立方体块。当Q查询时把Q所在的块及其面相邻的块内所有KV对取出并进行注意力运算。</p>
+<h1>缺点</h1>
+<p>显然，当Q在块的角或边缘上会忽略非面相邻的相邻块内的KV对。但端到端模型的梯度下降可能可以将Q的锁在块中心。</p>
+<h1>初步实验</h1>
+<p>在1024维chunk_size=512时得到了82%的成功率（Q是从已有K中取出并加上随机小扰动生成）。</p>
+<h1>未来规划</h1>
+<p>极度感谢@ElandaDRM朋友的5070显卡支持。我将在中秋节左右检验我在第二段的推论并训练一个小规模模型。</p>
+<h1>结尾</h1>
+<p>附<a href="test.py" download>随机Q查询实验的代码</a>，仅依赖numpy库。<br>
+致谢@ElendaDRM的支持。<br>
+感谢<a class="link"   target="_blank" rel="noopener" href="https://github.com/hotpad100c" >@hotpad100c<i class="fas fa-external-link-alt"></i></a>的初步评审。</p>
 
                     
                 </div>
@@ -269,7 +262,11 @@
                             <ul class="post-tags-box border-box">
                                 
                                     <li class="tag-item border-box">
-                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/CI-CD/">CI/CD</a>
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/AI/">AI</a>
+                                    </li>
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/%E6%B7%B1%E5%BA%A6%E5%AD%A6%E4%B9%A0/">深度学习</a>
                                     </li>
                                 
                             </ul>
@@ -285,31 +282,15 @@
                 
                     <div class="post-nav border-box">
                         
-                            <div class="prev-post">
-                                <a class="prev"
-                                   rel="prev"
-                                   href="/sparse-chunky-attention/"
-                                   title="Sparse Chunky Attention: 一种基于分块思想且跳略非面相邻块的线性稀疏注意力机制"
-                                >
-                                    <span class="left arrow-icon flex-center">
-                                        <i class="fas fa-chevron-left"></i>
-                                    </span>
-                                    <span class="title flex-center">
-                                        <span class="post-nav-title-item text-ellipsis">Sparse Chunky Attention: 一种基于分块思想且跳略非面相邻块的线性稀疏注意力机制</span>
-                                        <span class="post-nav-item">上一篇</span>
-                                    </span>
-                                </a>
-                            </div>
-                        
                         
                             <div class="next-post">
                                 <a class="next"
                                    rel="next"
-                                   href="/%E4%B8%80%E7%A7%8D%E6%97%A0%E9%97%A8%E6%8E%A7RNN%E7%9A%84%E5%B0%9D%E8%AF%95%EF%BC%9ADESER/"
-                                   title="一种无门控RNN的尝试：DESER"
+                                   href="/%E4%B8%80%E4%B8%AA%E5%9F%BA%E4%BA%8EGithub-Actions%E7%9A%84%E8%83%BD%E4%BF%AE%E5%A4%8Dlint%E9%97%AE%E9%A2%98%E5%B9%B6%E6%8F%90PR%E8%A7%A3%E5%86%B3%E7%9A%84%E6%9C%BA%E5%99%A8%E4%BA%BA/"
+                                   title="一个基于Github Actions的能修复lint问题并提PR解决的机器人"
                                 >
                                     <span class="title flex-center">
-                                        <span class="post-nav-title-item text-ellipsis">一种无门控RNN的尝试：DESER</span>
+                                        <span class="post-nav-title-item text-ellipsis">一个基于Github Actions的能修复lint问题并提PR解决的机器人</span>
                                         <span class="post-nav-item">下一篇</span>
                                     </span>
                                     <span class="right arrow-icon flex-center">

@@ -9,7 +9,6 @@ class CSA:
             self.mp[np.floor(K/self.chunk_size).tobytes()]=[]
         self.mp[np.floor(K/self.chunk_size).tobytes()].append((K,V))
     def query(self,Q):
-        delta=np.zeros(len(Q))
         for i in range(self.dim):
             for j in [-1,1]:
                 chunk=np.floor(Q/self.chunk_size)
@@ -17,14 +16,11 @@ class CSA:
                 if chunk.tobytes() not in self.mp:
                     continue
                 for K,V in self.mp[chunk.tobytes()]:
-                    delta+=np.dot(Q,K)*V
                     print(hash(K.tobytes()),np.linalg.norm(Q-K))
         chunk=np.floor(Q/self.chunk_size)
         if chunk.tobytes() in self.mp:
             for K,V in self.mp[chunk.tobytes()]:
-                delta+=np.dot(Q,K)*V
                 print(hash(K.tobytes()),np.linalg.norm(Q-K))
-        return delta
 csa=CSA(1024,chunk_size=512)
 l=[np.random.rand(1024)*1024 for _ in range(10000)]
 for K in l:
