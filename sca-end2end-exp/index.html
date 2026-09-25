@@ -193,7 +193,7 @@
             
                 <span class="meta-info-item post-update-date">
                     <i class="icon fa-solid fa-file-pen"></i>&nbsp;
-                    <span class="datetime" data-updated="Thu Sep 24 2026 22:40:27 GMT+0800">2026-09-24 22:40:27</span>
+                    <span class="datetime" data-updated="Fri Sep 25 2026 14:23:50 GMT+0800">2026-09-25 14:23:50</span>
                 </span>
             
         
@@ -250,6 +250,15 @@
 你可以看到该指标虽不太明显但稳定的下降痕迹，证明了我在<a href="../sparse-chunky-attention/#%E7%BC%BA%E7%82%B9">上篇文章</a>的推论。</p>
 <h1 id="结语"><a class="markdownIt-Anchor" href="#结语"></a> 结语</h1>
 <p>我可能进行进一步架构改进或实验。<a href="sca.zip" download>代码</a>可复现。</p>
+<p>2026/9/25更新：<br />
+增加了预热机制，前300步标准Transformer，随后逐渐过渡到500步彻底SCA。<br />
+<img   src="v2/accuracy.png"  alt="" ><br />
+<img   src="v2/training_loss.png"  alt="" ><br />
+<img   src="v2/validation_loss.png"  alt="" ><br />
+<img   src="v2/q_center_loss.png"  alt="" ><br />
+<img   src="v2/q_center_loss_validation.png"  alt="" ><br />
+chunk_size虽然有影响但是并不明显，整体结果仍然没有改善。<br />
+<a href="v2/sca.zip" download>代码</a>可复现。</p>
 
                     
                 </div>
