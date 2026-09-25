@@ -250,7 +250,7 @@
 
                     <div class="home-post-content keep-markdown-body">
                         
-                            <p>我们提出了SCA-L（潜空间稀疏分块注意力），用一个变换矩阵将高维KQ向量变换到低维空间输入SCA随后变换回高维空间，这可以解决目前所有因高维产生的问题，且可以取消面相邻机制转向所有相邻块。</p>
+                            <p>我们提出了SCA-L（潜空间稀疏分块注意力），用一个变换矩阵将高维KQ向量变换到低维空间输入SCA，这可以解决目前所有因高维产生的问题，且可以取消面相邻机制转向所有相邻块。</p>
                         
                     </div>
 
@@ -261,8 +261,8 @@
         
             <span class="meta-info-item border-box">
                 <i class="icon fa-solid fa-history"></i>&nbsp;<span class="home-post-history"
-                                                                                data-updated="Fri Sep 25 2026 13:37:58 GMT+0800"
-                >2026-09-25 13:37:58</span>
+                                                                                data-updated="Fri Sep 25 2026 14:01:02 GMT+0800"
+                >2026-09-25 14:01:02</span>
             </span>
         
 
@@ -904,5 +904,20 @@
         z-index: 9999 !important;
     }
 </style>
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+        tex2jax: {
+            inlineMath: [ ["$","$"], ["\\(","\\)"] ],
+            skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+            processEscapes: true
+        }
+    });
+    MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax();
+        for (var i = 0; i < all.length; ++i)
+            all[i].SourceElement().parentNode.className += ' has-jax';
+    });
+</script>
+<script src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
 </body>
 </html>

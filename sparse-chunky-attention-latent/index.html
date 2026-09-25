@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
     <meta name="keywords" content="Mulatram, 技术博客, 计算机科学, 技术分享">
-    <meta name="description" content="我们提出了SCA-L（潜空间稀疏分块注意力），用一个变换矩阵将高维KQ向量变换到低维空间输入SCA随后变换回高维空间，这可以解决目前所有因高维产生的问题，且可以取消面相邻机制转向所有相邻块。">
+    <meta name="description" content="我们提出了SCA-L（潜空间稀疏分块注意力），用一个变换矩阵将高维KQ向量变换到低维空间输入SCA，这可以解决目前所有因高维产生的问题，且可以取消面相邻机制转向所有相邻块。">
     <meta name="author" content="Mulatram">
     
     <title>
@@ -193,7 +193,7 @@
             
                 <span class="meta-info-item post-update-date">
                     <i class="icon fa-solid fa-file-pen"></i>&nbsp;
-                    <span class="datetime" data-updated="Fri Sep 25 2026 13:37:58 GMT+0800">2026-09-25 13:37:58</span>
+                    <span class="datetime" data-updated="Fri Sep 25 2026 14:01:02 GMT+0800">2026-09-25 14:01:02</span>
                 </span>
             
         
@@ -232,12 +232,12 @@
                     
 
                     
-                         <p>我们提出了SCA-L（潜空间稀疏分块注意力），用一个变换矩阵将高维KQ向量变换到低维空间输入SCA随后变换回高维空间，这可以解决目前所有因高维产生的问题，且可以取消面相邻机制转向所有相邻块。</p>
+                         <p>我们提出了SCA-L（潜空间稀疏分块注意力），用一个变换矩阵将高维KQ向量变换到低维空间输入SCA，这可以解决目前所有因高维产生的问题，且可以取消面相邻机制转向所有相邻块。</p>
 <span id="more"></span>
 <h1 id="背景"><a class="markdownIt-Anchor" href="#背景"></a> 背景</h1>
 <p><a href="../sca-end2end-exp/">SCA在上一篇的实验报告</a>里已经阐明，表现明显劣于标准注意力，我们认为是由于初始的随机状态会让一些KV永远梯度消失不受反向传播导致（至少有一部分原因是这样）[^1]。且高维空间过于稀疏，不利于SCA工作。</p>
 <h1 id="方案"><a class="markdownIt-Anchor" href="#方案"></a> 方案</h1>
-<p>受LoRA启发，我们可以通过一个变换矩阵将KQ分别变换到低维空间（V始终高维），然后输入SCA，随后再经过变换矩阵。这样一来，SCA将在低维空间操作，更重要的是，SCA现在完全可以进行全部的邻域遍历，而不仅限于面相邻。</p>
+<p>受LoRA启发，我们可以通过一个变换矩阵将KQ分别变换到低维空间（V始终高维），然后输入SCA。这样一来，SCA将在低维空间操作，更重要的是，SCA现在完全可以进行全部的邻域遍历，而不仅限于面相邻。</p>
 <h1 id="未来规划"><a class="markdownIt-Anchor" href="#未来规划"></a> 未来规划</h1>
 <p>本文只是一个原理阐述，实验报告将在本文发表日晚些给出。<br />
 感谢来自<a class="link"   target="_blank" rel="noopener" href="https://github.com/hotpad100c" >Ryan100C<i class="fas fa-external-link-alt"></i></a>的&quot;KV梯度消失&quot;推论，在此致谢。</p>
@@ -624,5 +624,20 @@
         z-index: 9999 !important;
     }
 </style>
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+        tex2jax: {
+            inlineMath: [ ["$","$"], ["\\(","\\)"] ],
+            skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+            processEscapes: true
+        }
+    });
+    MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax();
+        for (var i = 0; i < all.length; ++i)
+            all[i].SourceElement().parentNode.className += ' has-jax';
+    });
+</script>
+<script src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
 </body>
 </html>
