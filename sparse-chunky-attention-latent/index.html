@@ -4,12 +4,12 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
     <meta name="keywords" content="Mulatram, 技术博客, 计算机科学, 技术分享">
-    <meta name="description" content="我们提出了Sparse Chunky Attention(稀疏分块注意力)来加速注意力计算。我们应用分块思想，将高维的嵌入空间分割成多个边长为chunk_size的超立方体块。仅计算Q所在块及其面相邻的块内的所有K-V对的注意力。尽管舍去了其他非面相邻块内的K-V对，但在1024维且chunk_size=512时随机KVQ实验中得到了92%的成功率。">
+    <meta name="description" content="我们提出了SCA-L（潜空间稀疏分块注意力），用一个变换矩阵将高维KQ向量变换到低维空间输入SCA随后变换回高维空间，这可以解决目前所有因高维产生的问题，且可以取消面相邻机制转向所有相邻块。">
     <meta name="author" content="Mulatram">
     
     <title>
         
-            Sparse Chunky Attention: 一种基于分块思想且跳略非面相邻块的线性稀疏注意力机制 |
+            Sparse Chunky Attention-Latent: 一种基于SCA与低秩分解思想的稀疏注意力机制 |
         
         Mulatram的技术博客
     </title>
@@ -159,7 +159,7 @@
             <div class="post-content-bottom border-box">
                 
                     <div class="post-title">
-                        Sparse Chunky Attention: 一种基于分块思想且跳略非面相邻块的线性稀疏注意力机制
+                        Sparse Chunky Attention-Latent: 一种基于SCA与低秩分解思想的稀疏注意力机制
                     </div>
                 
 
@@ -187,13 +187,13 @@
         
             <span class="meta-info-item post-create-date">
                 <i class="icon fa-solid fa-calendar-plus"></i>&nbsp;
-                <span class="datetime">2026-09-23 21:00:04</span>
+                <span class="datetime">2026-09-25 13:27:53</span>
             </span>
 
             
                 <span class="meta-info-item post-update-date">
                     <i class="icon fa-solid fa-file-pen"></i>&nbsp;
-                    <span class="datetime" data-updated="Thu Sep 24 2026 22:35:30 GMT+0800">2026-09-24 22:35:30</span>
+                    <span class="datetime" data-updated="Fri Sep 25 2026 13:37:58 GMT+0800">2026-09-25 13:37:58</span>
                 </span>
             
         
@@ -232,25 +232,15 @@
                     
 
                     
-                         <p>我们提出了Sparse Chunky Attention(稀疏分块注意力)来加速注意力计算。我们应用分块思想，将高维的嵌入空间分割成多个边长为chunk_size的超立方体块。仅计算Q所在块及其面相邻的块内的所有K-V对的注意力。尽管舍去了其他非面相邻块内的K-V对，但在1024维且chunk_size=512时随机KVQ实验中得到了82%的成功率。</p>
+                         <p>我们提出了SCA-L（潜空间稀疏分块注意力），用一个变换矩阵将高维KQ向量变换到低维空间输入SCA随后变换回高维空间，这可以解决目前所有因高维产生的问题，且可以取消面相邻机制转向所有相邻块。</p>
 <span id="more"></span>
-<h1>摘要</h1>
-<p>我们提出了Sparse Chunky Attention(稀疏分块注意力)来加速注意力计算。我们应用分块思想，将高维的嵌入空间分割成多个边长为chunk_size的超立方体块。仅计算Q所在块及其面相邻的块内的所有K-V对的注意力。尽管舍去了其他非面相邻块内的K-V对，但在1024维且chunk_size=512时随机KVQ实验中得到了82%的成功率。</p>
-<h1>背景</h1>
-<p>目前LLM全部在使用的Transformer架构，由于传统注意力的缺陷，导致时间复杂度是平方级别，各家厂商也推出了自己的稀疏注意力来加快推理/训练。当然，他们多是通过稀疏掩码等方式选择性跳略。</p>
-<h1>介绍</h1>
-<p>把高维空间切分为多个边长为chunk_size的超立方体块。当Q查询时把Q所在的块及其面相邻的块内所有KV对取出并进行注意力运算。</p>
-<h1>缺点</h1>
-<p>显然，当Q在块的角或边缘上会忽略非面相邻的相邻块内的KV对。但端到端模型的梯度下降可能可以将Q的锁在块中心。</p>
-<h1>初步实验</h1>
-<p>在1024维chunk_size=512时得到了82%的成功率（Q是从已有K中取出并加上随机小扰动生成）。</p>
-<h1>未来规划</h1>
-<p>我将在中秋节左右检验我在第二段的推论并训练一个小规模模型。<br>
-2026/9/24 更新：<br>
-实验已完成，推论确实正确。实验报告在<a href="../sca-end2end-exp">此处</a>。</p>
-<h1>结尾</h1>
-<p>附<a href="test.py" download>随机Q查询实验的代码</a>，仅依赖numpy库。<br>
-感谢<a class="link"   target="_blank" rel="noopener" href="https://github.com/hotpad100c" >@hotpad100c<i class="fas fa-external-link-alt"></i></a>的初步评审。</p>
+<h1 id="背景"><a class="markdownIt-Anchor" href="#背景"></a> 背景</h1>
+<p><a href="../sca-end2end-exp/">SCA在上一篇的实验报告</a>里已经阐明，表现明显劣于标准注意力，我们认为是由于初始的随机状态会让一些KV永远梯度消失不受反向传播导致（至少有一部分原因是这样）[^1]。且高维空间过于稀疏，不利于SCA工作。</p>
+<h1 id="方案"><a class="markdownIt-Anchor" href="#方案"></a> 方案</h1>
+<p>受LoRA启发，我们可以通过一个变换矩阵将KQ分别变换到低维空间（V始终高维），然后输入SCA，随后再经过变换矩阵。这样一来，SCA将在低维空间操作，更重要的是，SCA现在完全可以进行全部的邻域遍历，而不仅限于面相邻。</p>
+<h1 id="未来规划"><a class="markdownIt-Anchor" href="#未来规划"></a> 未来规划</h1>
+<p>本文只是一个原理阐述，实验报告将在本文发表日晚些给出。<br />
+感谢来自<a class="link"   target="_blank" rel="noopener" href="https://github.com/hotpad100c" >Ryan100C<i class="fas fa-external-link-alt"></i></a>的&quot;KV梯度消失&quot;推论，在此致谢。</p>
 
                     
                 </div>
@@ -283,31 +273,15 @@
                 
                     <div class="post-nav border-box">
                         
-                            <div class="prev-post">
-                                <a class="prev"
-                                   rel="prev"
-                                   href="/sca-end2end-exp/"
-                                   title="对SCA的端到端模型训练实验"
-                                >
-                                    <span class="left arrow-icon flex-center">
-                                        <i class="fas fa-chevron-left"></i>
-                                    </span>
-                                    <span class="title flex-center">
-                                        <span class="post-nav-title-item text-ellipsis">对SCA的端到端模型训练实验</span>
-                                        <span class="post-nav-item">上一篇</span>
-                                    </span>
-                                </a>
-                            </div>
-                        
                         
                             <div class="next-post">
                                 <a class="next"
                                    rel="next"
-                                   href="/%E4%B8%80%E4%B8%AA%E5%9F%BA%E4%BA%8EGithub-Actions%E7%9A%84%E8%83%BD%E4%BF%AE%E5%A4%8Dlint%E9%97%AE%E9%A2%98%E5%B9%B6%E6%8F%90PR%E8%A7%A3%E5%86%B3%E7%9A%84%E6%9C%BA%E5%99%A8%E4%BA%BA/"
-                                   title="一个基于Github Actions的能修复lint问题并提PR解决的机器人"
+                                   href="/sca-end2end-exp/"
+                                   title="对SCA的端到端模型训练实验"
                                 >
                                     <span class="title flex-center">
-                                        <span class="post-nav-title-item text-ellipsis">一个基于Github Actions的能修复lint问题并提PR解决的机器人</span>
+                                        <span class="post-nav-title-item text-ellipsis">对SCA的端到端模型训练实验</span>
                                         <span class="post-nav-item">下一篇</span>
                                     </span>
                                     <span class="right arrow-icon flex-center">
