@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="Mulatram, 技术博客, 计算机科学, 技术分享">
+    <meta name="description" content="我给 SCA-L Duo 补了三组实验。block 1024 上长上下文本身不是瓶颈，索引器才是；同预算的掩码消融显示训练好的索引器输给一个免费的滑动窗口 1.5 个百分点，根因是 4 维格点在 1024 上只有 2 到 9 格的时间分辨率、根本表达不出“看最近的几个”；补上一根固定宽度的时间轴之后，读取量压到 37.5%，代价从 5.6 个百分点降到 2.6 个百分点。">
+    <meta name="author" content="Mulatram">
+    
+    <title>
+        
+            SCA-L Duo 端到端模型实验报告 |
+        
+        Mulatram的技术博客
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    
+        <link rel="shortcut icon" href="/images/logo.jpg">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/hexo-theme-keep/4.2.5/font/css/fontawesome.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/hexo-theme-keep/4.2.5/font/css/regular.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/hexo-theme-keep/4.2.5/font/css/solid.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/hexo-theme-keep/4.2.5/font/css/brands.min.css">
+    
+        
+            
+        
+            
+                
+<link rel="stylesheet" href="/css/katex.min.css">
+
+            
+        
+    
+    <script class="keep-theme-configurations">
+    const KEEP = window.KEEP || {}
+    KEEP.hexo_config = {"hostname":"mulatram.dev","root":"/","language":"zh-CN","path":"search.json"}
+    KEEP.theme_config = {"base_info":{"primary_color":"#0066cc","title":"Mulatram的技术博客","author":"Mulatram","avatar":"/images/avatar.jpg","logo":"/images/logo.jpg","favicon":"/images/logo.jpg"},"menu":{"home":"/","archives":"/archives"},"first_screen":{"enable":true,"background_img":"/images/bg.svg","background_img_dark":"/images/bg.svg","description":"Mulatram的技术博客 | 记录计算机科学和技术还有一些瞎折腾的东西","hitokoto":false},"social_contact":{"enable":true,"links":{"github":"https://github.com/Mulatram-UwU","weixin":null,"qq":null,"weibo":null,"zhihu":null,"twitter":null,"x":null,"facebook":null,"email":"contact@mulatram.dev"}},"scroll":{"progress_bar":false,"percent":false,"hide_header":true},"home":{"announcement":null,"category":false,"tag":true,"post_datetime":"updated"},"post":{"author_badge":{"enable":true,"level_badge":false,"custom_badge":["One","Two","Three"]},"word_count":{"wordcount":false,"min2read":true},"datetime_format":"YYYY-MM-DD HH:mm:ss","copyright_info":false,"share":false,"reward":{"enable":false,"img_link":null,"text":null,"icon":null}},"code_block":{"tools":{"enable":false,"style":"default"},"highlight_theme":"default"},"toc":{"enable":false,"number":false,"expand_all":false,"init_open":true,"layout":"right"},"website_count":{"busuanzi_count":{"enable":false,"site_uv":false,"site_pv":false,"page_pv":false}},"local_search":{"enable":true,"preload":false},"comment":{"enable":true,"use":"giscus","valine":{"appid":null,"appkey":null,"server_urls":null,"placeholder":null},"gitalk":{"github_id":null,"github_admins":null,"repository":null,"client_id":null,"client_secret":null,"proxy":null},"twikoo":{"env_id":null,"region":null,"version":"1.6.39"},"waline":{"server_url":null,"reaction":false,"version":"3.3.2"},"giscus":{"repo":"Mulatram-UwU/blog","repo_id":"R_kgDOSyKQVQ","category":"Announcements","category_id":"DIC_kwDOSyKQVc4C-lHG","reactions_enabled":true},"artalk":{"server":null},"disqus":{"shortname":null}},"rss":{"enable":false},"lazyload":{"enable":false},"cdn":{"enable":true,"provider":"cdnjs"},"pjax":{"enable":false},"footer":{"since":2020,"word_count":false,"site_deploy":{"enable":false,"provider":"github","url":null},"record":{"enable":false,"list":[{"code":null,"link":null}]}},"inject":{"enable":true,"css":[null,"/css/katex.min.css"],"js":[null]},"root":"","source_data":{},"version":"4.2.5"}
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 个月前","year":"%s 年前"}
+    KEEP.language_code_block = {"copy":"复制代码","copied":"已复制","fold":"折叠代码块","folded":"已折叠"}
+    KEEP.language_copy_copyright = {"copy":"复制版权信息","copied":"已复制","title":"原文标题","author":"原文作者","link":"原文链接"}
+  </script>
+<meta name="generator" content="Hexo 8.1.2"></head>
+
+
+<body>
+<div class="progress-bar-container">
+    
+
+    
+</div>
+
+
+
+<main class="page-container border-box">
+    <!-- home first screen  -->
+    
+
+    <!-- page content -->
+    <div class="page-main-content border-box">
+        <div class="page-main-content-top">
+            
+<header class="header-wrapper">
+
+    <div class="border-box header-content">
+        <div class="left flex-start border-box">
+            
+                <a class="logo-image border-box" href="/">
+                    <img src="/images/logo.jpg">
+                </a>
+            
+            <a class="site-name border-box" href="/">
+               Mulatram的技术博客
+            </a>
+        </div>
+
+        <div class="right border-box">
+            <div class="pc border-box">
+                <ul class="menu-list border-box">
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/">
+                                
+                                首页
+                                
+                            </a>
+                            
+                        </li>
+                    
+                        
+                        <li class="menu-item flex-start border-box">
+                            <a class="menu-text-color border-box" href="/archives">
+                                
+                                归档
+                                
+                            </a>
+                            
+                        </li>
+                    
+                    
+                        <li class="menu-item search search-popup-trigger">
+                            <i class="menu-text-color fas search fa-search"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <div class="mobile border-box flex-start">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fas fa-search"></i></div>
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list border-box">
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/">
+                            
+                            首页
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+                
+                <li class="drawer-menu-item border-box not-sub-menu">
+                    <label class="drawer-menu-label border-box">
+                        <a class="drawer-menu-text-color left-side flex-start border-box" href="/archives">
+                            
+                            归档
+                        </a>
+                        
+                    </label>
+                    
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle border-box">
+
+            <div class="main-content border-box">
+                
+
+                    
+<div class="fade-in-down-animation">
+    <div class="post-page-container border-box">
+        <div class="post-content-container border-box">
+            
+
+            <div class="post-content-bottom border-box">
+                
+                    <div class="post-title">
+                        SCA-L Duo 端到端模型实验报告
+                    </div>
+                
+
+                
+                    <div class="post-header border-box">
+                        
+                            <div class="avatar-box border-box">
+                                <img src="/images/avatar.jpg">
+                            </div>
+                        
+                        <div class="info-box">
+                            <div class="author border-box">
+                                <span class="name">Mulatram</span>
+                                
+                                    <span class="author-badge">Two</span>
+                                
+                            </div>
+                            <div class="meta-info border-box">
+                                
+
+<div class="post-meta-info-container border-box post">
+    <div class="post-meta-info border-box">
+        
+
+        
+            <span class="meta-info-item post-create-date">
+                <i class="icon fa-solid fa-calendar-plus"></i>&nbsp;
+                <span class="datetime">2026-10-03 01:20:00</span>
+            </span>
+
+            
+                <span class="meta-info-item post-update-date">
+                    <i class="icon fa-solid fa-file-pen"></i>&nbsp;
+                    <span class="datetime" data-updated="Sat Oct 03 2026 00:11:10 GMT+0800">2026-10-03 00:11:10</span>
+                </span>
+            
+        
+
+        
+
+        
+            <span class="post-tag meta-info-item border-box">
+                <ul class="post-tag-ul">
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/AI/">AI</a></li>
+                        
+                    
+                            <li class="tag-item"><span class="tag-separator"><i class="icon fas fa-hashtag"></i></span><a href="/tags/%E6%B7%B1%E5%BA%A6%E5%AD%A6%E4%B9%A0/">深度学习</a></li>
+                        
+                    
+                </ul>
+            </span>
+        
+
+        
+        
+        
+        
+    </div>
+
+    
+</div>
+
+                            </div>
+                        </div>
+                    </div>
+                
+
+                <div class="post-content keep-markdown-body ">
+                    
+
+                    
+                         <p>我给 SCA-L Duo 补了三组实验。block 1024 上长上下文本身不是瓶颈，索引器才是；同预算的掩码消融显示训练好的索引器输给一个免费的滑动窗口 1.5 个百分点，根因是 4 维格点在 1024 上只有 2 到 9 格的时间分辨率、根本表达不出“看最近的几个”；补上一根固定宽度的时间轴之后，读取量压到 37.5%，代价从 5.6 个百分点降到 2.6 个百分点。</p>
+<span id="more"></span>
+<h1 id="背景"><a class="markdownIt-Anchor" href="#背景"></a> 背景</h1>
+<p><a href="../sparse-chunky-attention-latent-duo/">我们提出了 SCA-L Duo</a>，把 SCA-L 的索引器接到 MLA 压缩过的 KV Cache 上，跑完一个 epoch 的密度扫描，拿到“保留 50% 换 5.0 个准确率点”。那个数一直让我不舒服。5 个点是“能接受”还是“就这样了”，完全取决于其中多少是索引器的锅、多少只是砍掉一半上下文的锅。这一篇就是把这两件事分开。</p>
+<h1 id="过程"><a class="markdownIt-Anchor" href="#过程"></a> 过程</h1>
+<p>语料还是 TinyStories + byte-level BPE（vocab 8192），切片 262144000 字节，训练 63535606 token、验证 983578 token。在 AutoDL 上租了一张 vGPU-48G（系统里显示成 48GB 的 3090），96 核。主力是 <code>common.train</code> 一个入口，block、batch、步数按实验换，其余固定：emb 512、6 层、8 头、MLA latent 64、索引器 latent 4、chunk_size 0.5、code_std 0.30、<code>--aux-mode rate --aux-beta 0.0 --detach-indexer --indexer-lr-scale 0.1</code>、seed 1337。block 1024 上一个 epoch 是 3877 步，batch 16 就是 16384 token/步。</p>
+<p>后面所有“block 1024”的对照，稠密基线、旧索引器、新索引器三者都是同一个 seed、同一个 block/batch、同一份 7755 步的余弦调度，所以喂进去的 batch 序列逐个相同，可以按步对齐。</p>
+<h1 id="长上下文"><a class="markdownIt-Anchor" href="#长上下文"></a> 长上下文</h1>
+<p>先验证最自然的那个猜想：block 256 太短，上下文长一点才看得出稀疏的价值。三个稠密基线，前两个匹配 token（63.5M，正好一个 epoch），后两个匹配步数：</p>
+<table>
+<thead>
+<tr>
+<th>block</th>
+<th>batch</th>
+<th>步数</th>
+<th>见到的 token</th>
+<th>验证 loss</th>
+<th>验证准确率</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>256</td>
+<td>32</td>
+<td>7755</td>
+<td>63.5M</td>
+<td><strong>1.6003</strong></td>
+<td><strong>59.39%</strong></td>
+</tr>
+<tr>
+<td>1024</td>
+<td>16</td>
+<td>3878</td>
+<td>63.5M</td>
+<td>1.9546</td>
+<td>53.94%</td>
+</tr>
+<tr>
+<td>1024</td>
+<td>16</td>
+<td>7755</td>
+<td>127.1M</td>
+<td>1.6641</td>
+<td>58.76%</td>
+</tr>
+</tbody>
+</table>
+<p>匹配 token 时 1024 落后 0.354，匹配步数时只落后 0.064，0.63 个准确率点。**原来那 0.354 里有 82% 是欠训。**但反过来也得说清楚：1024 是吃掉两倍 token 才追到这个位置的，按 token 算它仍然明显更差。</p>
+<p><img   src="validation_loss.png"  alt="" ><br />
+<img   src="validation_accuracy.png"  alt="" ><br />
+两条曲线说的是一件事：block 1024 要看到两倍的数据才勉强追上 block 256，而在 3878 步那个位置它还差得很远。我一开始以为是余弦调度没退完火，但 7755 步跑完差距只剩 0.064，所以主要因素确实是步数不够，不是长度本身。</p>
+<p>光看 loss 还分不清是“长上下文没用”还是“这个语料没用”，所以我又量了一次路由的天花板：把每个 Q 的可见 K 按注意力权重排序，取前 C 个的权重和。这是任何固定预算路由器的上界，因为它作弊看了答案。</p>
+<p><img   src="oracle_frontier.png"  alt="" ><br />
+左图按预算 C 看，1024 在每个 C 上都不如 256（C=128 时 0.9445 对 0.9840）。右图换成“保留占可见 K 的比例”，结论整个反过来：</p>
+<table>
+<thead>
+<tr>
+<th>保留比例</th>
+<th>block 256</th>
+<th>block 1024</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>6.2%</td>
+<td>C=8，0.558</td>
+<td>C=32，<strong>0.764</strong></td>
+</tr>
+<tr>
+<td>12.5%</td>
+<td>C=16，0.691</td>
+<td>C=64，<strong>0.861</strong></td>
+</tr>
+<tr>
+<td>25%</td>
+<td>C=32，0.796</td>
+<td>C=128，<strong>0.926</strong></td>
+</tr>
+<tr>
+<td>49.8%</td>
+<td>C=64，0.867</td>
+<td>C=256，<strong>0.959</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>同一个预算占比下，1024 的天花板高 9 到 21 个百分点，而且优势保持到实际工作点（50%）。</strong></p>
+<p>我猜是因为这个语料是独立短篇拼起来的，一篇大约 250 token。block 256 的窗口差不多正好是一篇故事，可见的 128 个 K 几乎全都“有关”，路由器根本没有能扔的东西；block 1024 跨了四篇，一半以上的 K 是可证明无关的，路由器终于有结构可挖。也就是说长上下文制造出来的正是“无关性”本身。</p>
+<p>那时候我以为这就解释了稀疏的价值，于是把稀疏的那一半也跑了：block 1024、密度设定 0.50、同样 7755 步。结果是它落后自己的稠密对照 <strong>5.60 个准确率点</strong>（53.16% 对 58.76%），而 block 256 上同一档密度落后 <strong>5.03 个点</strong>。</p>
+<p>**天花板抬高了，精度上的代价一点没少。**所以长度不是答案，剩下的问题变成“选哪一半”。</p>
+<h1 id="掩码消融"><a class="markdownIt-Anchor" href="#掩码消融"></a> 掩码消融</h1>
+<p>要回答“选哪一半”，就把候选集合的<strong>数量</strong>固定成索引器自己的 per-Q 候选数，只换<strong>选哪些</strong>，然后重跑整个验证集。这个做法能干净地绕开预算问题——所有模式的候选数逐个 Q 都一样。</p>
+<table>
+<thead>
+<tr>
+<th>掩码</th>
+<th>4 维格点索引器</th>
+<th>与索引器的重合</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>全部 K（稠密）</td>
+<td>1.6604 / 58.92%</td>
+<td>—</td>
+</tr>
+<tr>
+<td>oracle top-C（作弊）</td>
+<td>1.8717 / 54.75%</td>
+<td>0.632</td>
+</tr>
+<tr>
+<td>local（最近 C 个 K）</td>
+<td>1.8786 / 54.55%</td>
+<td>0.654</td>
+</tr>
+<tr>
+<td>sink_local（第 0 个 K + 最近 C-1 个）</td>
+<td>1.8909 / 54.31%</td>
+<td>0.652</td>
+</tr>
+<tr>
+<td><strong>索引器（实测）</strong></td>
+<td><strong>1.9546 / 53.05%</strong></td>
+<td>1.000</td>
+</tr>
+<tr>
+<td>random</td>
+<td>2.1314 / 49.86%</td>
+<td>0.591</td>
+</tr>
+</tbody>
+</table>
+<p>（都是在各自最终 checkpoint 上单次评估，稠密那一行也是单次。）</p>
+<p><strong>训练好的索引器，输给一个零训练的滑动窗口 0.076 个 loss、1.50 个准确率点。</strong></p>
+<p>而且它和滑窗的重合率只有 0.654，随机是 0.591——它几乎不偏向近因。两件事同时被这行数说掉了：这个语料上的好掩码就是“看最近的一段”，以及格子、码本、密度控制器加起来，净价值是负的。</p>
+<p>顺手把失分拆开。random 是零路由能力的下界，oracle 是作弊上界：</p>
+<ul>
+<li>索引器已经拿到 random 到 oracle 之间 <strong>68.1%</strong> 的空间</li>
+<li>剩下的 0.083 里，滑窗免费拿走 <strong>91.7%</strong></li>
+</ul>
+<p>所以“索引器还不够聪明”这个说法在数据上站不住——它再聪明也只能多拿 0.007。真正贵的是“只读一半”这件事本身。我当时的第一反应是去改架构（比如把窗口做成下界、和内容格点取并集），现在看那是错的：既然正确解就是滑窗，问题不是掩码的形状，是索引器压根没学会滑窗。</p>
+<h2 id="尺子失效"><a class="markdownIt-Anchor" href="#尺子失效"></a> 尺子失效</h2>
+<p>上面那个 oracle 一开始是当上界用的，结果它自己先翻车了。</p>
+<p>加了时间轴的模型（下一节）上，oracle 是 1.8786，训练好的索引器是 1.7861——<strong>作弊的比不作弊的差 0.09</strong>。原因不难发现：模型的稠密注意力会长成“它读得到的东西”的形状。新版索引器和滑窗重合 0.922，此时按注意力 top-C 去选，等于喂给模型一堆它没见过的 K（重合率只有 0.796）。</p>
+<p>也就是说 <strong>oracle top-C 只在“模型还没适应受限掩码”的时候才成立</strong>。我前面几轮拿它当上界、算出“索引器离上限还差 5 倍”，是拿一把坏尺子量的。这一条我记下来，免得以后再踩。</p>
+<h1 id="时间分辨率"><a class="markdownIt-Anchor" href="#时间分辨率"></a> 时间分辨率</h1>
+<p>既然好掩码就是滑窗，下一个问题就很具体了：索引器为什么学不会滑窗。</p>
+<p>我一开始猜它的输入缺时间编码，于是写了个探针，量 z 里面还剩多少位置信息（线性读出到 token 位置的 <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>R</mi><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">R^2</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8141079999999999em;vertical-align:0em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.00773em;">R</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141079999999999em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span></span></span></span>）：</p>
+<table>
+<thead>
+<tr>
+<th>层</th>
+<th><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>c</mi><mrow><mi>k</mi><mi>v</mi></mrow></msub></mrow><annotation encoding="application/x-tex">c_{kv}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.58056em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal">c</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.33610799999999996em;"><span style="top:-2.5500000000000003em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.03148em;">k</span><span class="mord mathnormal mtight" style="margin-right:0.03588em;">v</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span>（64 维输入）</th>
+<th><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>z</mi><mi>k</mi></msub></mrow><annotation encoding="application/x-tex">z_k</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.58056em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.04398em;">z</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.33610799999999996em;"><span style="top:-2.5500000000000003em;margin-left:-0.04398em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.03148em;">k</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span>（4 维码）</th>
+<th><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>z</mi><mi>q</mi></msub></mrow><annotation encoding="application/x-tex">z_q</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.716668em;vertical-align:-0.286108em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.04398em;">z</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.15139200000000003em;"><span style="top:-2.5500000000000003em;margin-left:-0.04398em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.03588em;">q</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.286108em;"><span></span></span></span></span></span></span></span></span></span></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>0.994</td>
+<td><strong>0.935</strong></td>
+<td>0.467</td>
+</tr>
+<tr>
+<td>2</td>
+<td>0.994</td>
+<td><strong>0.848</strong></td>
+<td>0.766</td>
+</tr>
+<tr>
+<td>3</td>
+<td>0.995</td>
+<td><strong>0.885</strong></td>
+<td>0.878</td>
+</tr>
+<tr>
+<td>4</td>
+<td>0.990</td>
+<td>0.813</td>
+<td>0.806</td>
+</tr>
+<tr>
+<td>1</td>
+<td>0.992</td>
+<td>0.544</td>
+<td>0.146</td>
+</tr>
+<tr>
+<td>5</td>
+<td>0.974</td>
+<td>0.382</td>
+<td>0.530</td>
+</tr>
+</tbody>
+</table>
+<p>**位置信息一直在。**压到 4 维之后还有 0.81 到 0.94，而且有单轴把位置编码得极干净——和位置的相关系数 0.88 到 0.94。所以“emb 缺时间编码”是错的。</p>
+<p>缺的是<strong>分辨率</strong>。判据是 <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo><mi>max</mi><mo>⁡</mo></mo><mi>i</mi></msub><mo stretchy="false">∣</mo><msub><mi>c</mi><mrow><mi>q</mi><mo separator="true">,</mo><mi>i</mi></mrow></msub><mo>−</mo><msub><mi>c</mi><mrow><mi>k</mi><mo separator="true">,</mo><mi>i</mi></mrow></msub><mo stretchy="false">∣</mo><mo>≤</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\max_i\lvert c_{q,i}-c_{k,i}\rvert\le 1</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.036108em;vertical-align:-0.286108em;"></span><span class="mop"><span class="mop">max</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.31166399999999994em;"><span style="top:-2.5500000000000003em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">i</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mopen">∣</span><span class="mord"><span class="mord mathnormal">c</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.311664em;"><span style="top:-2.5500000000000003em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.03588em;">q</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">i</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.286108em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:1.036108em;vertical-align:-0.286108em;"></span><span class="mord"><span class="mord mathnormal">c</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361079999999999em;"><span style="top:-2.5500000000000003em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.03148em;">k</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">i</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.286108em;"><span></span></span></span></span></span></span><span class="mclose">∣</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">≤</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">1</span></span></span></span>，每个轴放行的是“<span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>±</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\pm 1</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.72777em;vertical-align:-0.08333em;"></span><span class="mord">±</span><span class="mord">1</span></span></span></span> 个格子”的对称区间，于是位置轴能表达的最紧窗口就是 2 个格子宽。我数了每个轴在这条 1024 序列上到底用到多少格子：</p>
+<table>
+<thead>
+<tr>
+<th>层</th>
+<th>最好那根轴</th>
+<th>与位置的相关系数</th>
+<th>格子数</th>
+<th>该轴隐含的窗口</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2</td>
+<td>1</td>
+<td>0.906</td>
+<td>6</td>
+<td>526 token</td>
+</tr>
+<tr>
+<td>3</td>
+<td>1</td>
+<td>0.918</td>
+<td>8</td>
+<td>530 token</td>
+</tr>
+<tr>
+<td>4</td>
+<td>3</td>
+<td>0.895</td>
+<td>6</td>
+<td>708 token</td>
+</tr>
+<tr>
+<td>5</td>
+<td>1</td>
+<td>0.287</td>
+<td>9</td>
+<td>1882 token</td>
+</tr>
+<tr>
+<td>4</td>
+<td>2</td>
+<td>-0.069</td>
+<td>4</td>
+<td>19300 token</td>
+</tr>
+</tbody>
+</table>
+<p>最好那根轴隐含 526 token 的窗口，而预算要的是 224，差了 2.3 倍；其余轴上是 1200 到 19000 token，等于没有分辨率。这个 224 是这么来的：平均候选 227 个、平均可见 K 512.5 个，一个 Q 想靠“最近的一段”花掉这份预算，窗长就得在 224 上下。</p>
+<p>这是结构性的，不是调参问题：格子宽度等于 <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext>chunk_size</mtext><mo>×</mo><mi>g</mi></mrow><annotation encoding="application/x-tex">\text{chunk\_size}\times g</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.00444em;vertical-align:-0.31em;"></span><span class="mord text"><span class="mord">chunk_size</span></span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.625em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">g</span></span></span></span>，而 <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi></mrow><annotation encoding="application/x-tex">g</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.625em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">g</span></span></span></span> 归密度控制器管，只要密度掉到设定值以下它就把格子<strong>重新变粗</strong>。想要细分辨率就得接受低密度，两者直接对冲。</p>
+<p>于是我加了一根不吃控制器的轴：<code>--pos-chunk 128</code>，格子宽度固定 128 token，<span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">∣</mo><mi mathvariant="normal">Δ</mi><mo stretchy="false">∣</mo><mo>≤</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\lvert\Delta\rvert\le 1</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">∣</span><span class="mord">Δ</span><span class="mclose">∣</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">≤</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">1</span></span></span></span> 就是查询后面 256 token 的硬窗口，内容轴再在窗内细化。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">position_cells</span>(<span class="params">self, sequence, device</span>):</span><br><span class="line">    <span class="comment"># 内容轴的宽度是 chunk_size * density_gain，由密度控制器拥有，</span></span><br><span class="line">    <span class="comment"># 所以它一定停在“刚好命中密度设定值”的那个粗度上。</span></span><br><span class="line">    <span class="comment"># 时间轴必须固定，否则 Chebyshev&lt;=1 永远是一条几百 token 宽的带。</span></span><br><span class="line">    index = torch.arange(sequence, device=device, dtype=torch.float32)</span><br><span class="line">    <span class="keyword">return</span> torch.floor((index.view(-<span class="number">1</span>, <span class="number">1</span>) - index.view(<span class="number">1</span>, -<span class="number">1</span>)).clamp_min(<span class="number">0.0</span>) / <span class="variable language_">self</span>.pos_chunk)</span><br></pre></td></tr></table></figure>
+<p>同一份配置、同一个 seed、同样 7755 步重训了一遍：</p>
+<p><img   src="sparse_gap.png"  alt="" ><br />
+<img   src="mask_ablation.png"  alt="" ><br />
+<img   src="net_recovery.png"  alt="" ></p>
+<table>
+<thead>
+<tr>
+<th>掩码</th>
+<th>4 维格点</th>
+<th>加固定时间轴</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>全部 K（稠密）</td>
+<td>1.6604 / 58.92%</td>
+<td>同左</td>
+</tr>
+<tr>
+<td><strong>索引器（实测）</strong></td>
+<td>1.9546 / 53.05%</td>
+<td><strong>1.7861 / 56.41%</strong></td>
+</tr>
+<tr>
+<td>local 滑窗</td>
+<td>1.8786 / 54.55%</td>
+<td>1.7911 / 56.32%</td>
+</tr>
+<tr>
+<td>sink_local</td>
+<td>1.8909 / 54.31%</td>
+<td>1.8448 / 55.20%</td>
+</tr>
+<tr>
+<td>oracle top-C</td>
+<td>1.8717 / 54.75%</td>
+<td>1.8786 / 54.72%</td>
+</tr>
+<tr>
+<td>random</td>
+<td>2.1314 / 49.86%</td>
+<td>2.3481 / 46.58%</td>
+</tr>
+<tr>
+<td>与滑窗的重合率</td>
+<td>0.654</td>
+<td><strong>0.922</strong></td>
+</tr>
+</tbody>
+</table>
+<p>三件事同时变了：</p>
+<ul>
+<li><strong>相对稠密的代价从 5.6 个点降到 2.6 个点</strong>，loss gap 从 0.294 到 0.126</li>
+<li><strong>索引器不再输给免费滑窗</strong>：从输 1.50 个准确率点、0.076 个 loss，变成赢 0.09 个点、0.005 个 loss。这个优势小到我不打算当结论，但方向翻了；和滑窗的重合率从 0.654 涨到 0.922，它终于学会看最近的一段了</li>
+<li><strong>读取量反而更少</strong>：平均候选从 230.5 降到 187.4，占可见 K 的比例从 44.3% 降到 37.5%</li>
+</ul>
+<p>第一张图是这个过程最清楚的证据：旧索引器（蓝）在 1000 步左右就卡在 +0.28 到 +0.30 不动了；加了时间轴的那条（橙）在 3000 步之后平在 +0.11 到 +0.14。少了三分之一以上的惩罚，而且是收敛了，不是还在往下走。净找回同步数从 0.28 提到 0.70。</p>
+<p>我猜机制就是：格子判据只管“在不在同一片邻域”，它没有“越近越好”的概念，所以在 256 token 的窗内它基本上是任意挑掉 26% 的 K，而丢掉的恰好包含最近的 token。这大概就是为什么它在精度上只比纯滑窗好 0.09 个点——内容轴在窗内几乎没提供增量。</p>
+<h1 id="缺点"><a class="markdownIt-Anchor" href="#缺点"></a> 缺点</h1>
+<p>只有一个 seed。0.57 个点那种量级（block 256 和 1024 的稀疏代价）比验证噪声大，但低于 run-to-run 方差，我不把它当结论。</p>
+<p>掩码消融只有密度 0.50 这一个工作点。再稀疏下去滑窗未必还是好启发式，索引器有可能在很低预算上才有价值，这一轮没测。</p>
+<p>还是稠密掩码，省的是“该算多少”而不是“真的跑了多久”，这一点和上一篇一样没动。</p>
+<p>语料是独立短篇拼起来的，长程依赖基本不存在，所以“长上下文没用”只对这个语料成立。换语料它就能被推翻，这也是下面第一件事。</p>
+<p>新版读取量比旧版少（37.5% 对 44.3%），所以“旧版 vs 新版”不是严格同预算。两者的平均密度都在 0.51 左右，但时间轴在 256 token 处封顶，长前缀的 Q 拿不到更多候选——平均候选数会掉就是这个原因。</p>
+<h1 id="未来规划"><a class="markdownIt-Anchor" href="#未来规划"></a> 未来规划</h1>
+<p>下一步是换语料，不是加长序列。理由很直接：这一轮所有负面结论都建立在一个前提上——TinyStories 每篇约 250 token，块内没有真正的长程依赖。这个前提是从现象反推的，没被独立验证过。换语料是唯一能检验它的办法。</p>
+<p>但光换语料不够。索引器的投影现在只被 rate-distortion 辅助目标训练（<code>--detach-indexer</code> 加 <code>--aux-beta 0.0</code>），它对“选得对不对”完全没有信号，位置的答案就是它自己收敛出来的。所以同一轮要开 <code>--aux-mode kl</code>（不 detach）或者 <code>--ste-mask</code>，让路由吃到语言建模的梯度。</p>
+<p>我打算明天做这件事。</p>
+<h1 id="结语"><a class="markdownIt-Anchor" href="#结语"></a> 结语</h1>
+<p>附<a href="sca.zip" download>代码</a>可复现。<code>tools/probe_indexer_position.py</code> 是那个位置探针，<code>tools/eval_mask_ablation.py</code> 是掩码消融，TinyStories 和 BPE 太大没有打包。</p>
+<p>这一轮的结论和我的预期是反的。我本来想证明“序列更长 SCA-L 更强”，结果证明的是：索引器缺的是一根时间轴，而它省下来的价值来自预算，不是上下文。</p>
+
+                    
+                </div>
+
+                
+
+                <div class="post-bottom-tags-and-share border-box">
+                    <div>
+                        
+                            <ul class="post-tags-box border-box">
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/AI/">AI</a>
+                                    </li>
+                                
+                                    <li class="tag-item border-box">
+                                        <i class="icon fas fa-hashtag"></i>&nbsp;<a href="/tags/%E6%B7%B1%E5%BA%A6%E5%AD%A6%E4%B9%A0/">深度学习</a>
+                                    </li>
+                                
+                            </ul>
+                        
+                    </div>
+                    <div>
+                        
+                    </div>
+                </div>
+
+                
+
+                
+                    <div class="post-nav border-box">
+                        
+                        
+                            <div class="next-post">
+                                <a class="next"
+                                   rel="next"
+                                   href="/sparse-chunky-attention-latent-duo/"
+                                   title="SCA-L Duo: 一种使用SCA-L思想的MLA优化方式"
+                                >
+                                    <span class="title flex-center">
+                                        <span class="post-nav-title-item text-ellipsis">SCA-L Duo: 一种使用SCA-L思想的MLA优化方式</span>
+                                        <span class="post-nav-item">下一篇</span>
+                                    </span>
+                                    <span class="right arrow-icon flex-center">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </span>
+                                </a>
+                            </div>
+                        
+                    </div>
+                
+
+                
+                    
+
+
+    <div class="comments-container border-box">
+        <div id="comments-anchor" class="comment-area-title border-box">
+            <i class="fas fa-comments"></i>&nbsp;评论
+        </div>
+        <div class="comment-plugin-fail border-box">
+    <span class="fail-tip">评论插件加载失败</span>
+    <button class="reload keep-button">点击重新加载</button>
+</div>
+<div class="comment-plugin-loading flex-center border-box">
+    <i class="loading-icon fa-solid fa-spinner fa-spin"></i>
+    <span class="load-tip">正在加载评论插件</span>
+</div>
+<script data-pjax>
+  window.KeepCommentPlugin = {}
+  window.KeepCommentPlugin.hideLoading = () => {
+    const cplDom = document.querySelector('.comments-container .comment-plugin-loading')
+    cplDom.style.display = 'none'
+  }
+  window.KeepCommentPlugin.loadFailHandle = () => {
+    window.KeepCommentPlugin.hideLoading()
+    const cpfDom = document.querySelector('.comments-container .comment-plugin-fail')
+    cpfDom.style.display = 'flex'
+    cpfDom.querySelector('.reload').addEventListener('click', () => {
+      window.location.reload()
+    })
+  }
+</script>
+
+        
+            
+
+    <div class="giscus-comments-container">
+        <div class="giscus" id="giscus"></div>
+        <script 
+                onerror="window.KeepCommentPlugin.loadFailHandle()"
+        >
+          if (!window.KeepCommentPlugin?.getGiscusTheme) {
+            window.KeepCommentPlugin.getGiscusTheme = () => {
+              return document.documentElement.classList.contains('dark-mode') ? 'dark_dimmed' : 'light_tritanopia'
+            }
+          }
+
+          if (!window.KeepCommentPlugin?.changeGiscusTheme) {
+            window.KeepCommentPlugin.changeGiscusTheme = () => {
+              const iframe = document.querySelector('iframe.giscus-frame')
+              iframe && iframe.contentWindow.postMessage({
+                giscus: {
+                  setConfig: {
+                    theme: window.KeepCommentPlugin.getGiscusTheme()
+                  }
+                }
+              }, 'https://giscus.app')
+            }
+          }
+
+          if (!window.KeepCommentPlugin?.initGiscus) {
+            window.KeepCommentPlugin.initGiscus = () => {
+              const script = document.createElement('script')
+              script.async = true
+              script.src = 'https://giscus.app/client.js'
+              script.setAttribute('data-repo', 'Mulatram-UwU/blog')
+              script.setAttribute('data-repo-id', 'R_kgDOSyKQVQ')
+              script.setAttribute('data-category', 'Announcements')
+              script.setAttribute('data-category-id', 'DIC_kwDOSyKQVc4C-lHG')
+              script.setAttribute('data-reactions-enabled', '1')
+              script.setAttribute('data-lang', 'zh-CN')
+              script.setAttribute('data-mapping', 'pathname')
+              script.setAttribute('data-strict', '0')
+              script.setAttribute('data-emit-metadata', '0')
+              script.setAttribute('data-input-position', 'top')
+              script.setAttribute('crossorigin', 'anonymous')
+              script.setAttribute('loading', 'lazy')
+              script.setAttribute('data-theme', window.KeepCommentPlugin.getGiscusTheme())
+              document.querySelector('.giscus-comments-container').appendChild(script)
+              script.onerror = () => {
+                window.KeepCommentPlugin.loadFailHandle()
+              }
+              script.onload = () => {
+                window.KeepCommentPlugin.hideLoading()
+              }
+              const toggleThemeBtn = document.querySelector('.tool-toggle-theme-mode')
+              toggleThemeBtn && toggleThemeBtn.addEventListener('click', () => {
+                window.KeepCommentPlugin.changeGiscusTheme()
+              })
+            }
+          }
+
+          if ('false' === "true") {
+            setTimeout(() => {
+              window.KeepCommentPlugin.initGiscus()
+            }, 1000)
+          } else {
+            window.addEventListener("DOMContentLoaded", window.KeepCommentPlugin.initGiscus)
+          }
+        </script>
+    </div>
+
+
+        
+    </div>
+
+
+
+
+
+                
+            </div>
+        </div>
+
+        
+    </div>
+</div>
+
+
+                
+            </div>
+        </div>
+
+        <div class="page-main-content-bottom border-box">
+            
+<footer class="footer border-box">
+    <div class="copyright-info info-item">
+    &copy;&nbsp;<span>2020</span>&nbsp;-&nbsp;2026
+    
+            &nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;&nbsp;<a href="/">Mulatram</a>
+        
+    </div>
+
+    <div class="theme-info info-item">
+        由&nbsp;<a target="_blank" href="https://hexo.io">Hexo</a>&nbsp;驱动&nbsp;&&nbsp;主题&nbsp;<a class="keep-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep</a>
+    </div>
+
+    
+
+    
+
+    
+</footer>
+
+        </div>
+    </div>
+
+    <!-- post tools -->
+    
+        <div class="post-tools right-toc">
+            <div class="post-tools-container border-box">
+    <ul class="post-tools-list border-box">
+        <!-- PC encrypt again -->
+        
+
+        <!-- PC TOC show toggle -->
+        
+
+        <!-- PC go comment -->
+        
+            <li class="tools-item flex-center go-to-comments">
+                <i class="fas fa-comment"></i>
+                <span class="post-comments-count"></span>
+            </li>
+        
+
+        <!-- PC full screen -->
+        <li class="tools-item flex-center full-screen">
+            <i class="fa-solid fa-expand"></i>
+        </li>
+    </ul>
+</div>
+
+        </div>
+    
+
+    <!-- side tools -->
+    <div class="side-tools">
+        <div class="side-tools-container border-box ">
+    <ul class="side-tools-list side-tools-show-handle border-box">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <!-- toggle mode -->
+        
+            <li class="tools-item tool-toggle-theme-mode flex-center">
+                <i class="fas fa-moon"></i>
+            </li>
+        
+
+        <!-- rss -->
+        
+
+        <!-- to bottom -->
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list border-box">
+        
+
+        
+            <li class="tools-item go-to-comments-tablet flex-center">
+                <i class="fas fa-comment"></i>
+            </li>
+        
+
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+
+        <li class="tools-item tool-scroll-to-top flex-center show-arrow">
+            <i class="arrow fas fa-arrow-up"></i>
+            <span class="percent"></span>
+        </li>
+    </ul>
+</div>
+
+    </div>
+
+    <!-- image mask -->
+    <div class="zoom-in-image-mask">
+    <img class="zoom-in-image">
+</div>
+
+
+    <!-- local search -->
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fas fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="搜索..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="close-popup-btn">
+                <i class="fas fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fas fa-spinner fa-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+    <!-- tablet toc -->
+    
+</main>
+
+
+
+
+
+<!-- common js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-theme-keep/4.2.5/js/utils.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-theme-keep/4.2.5/js/header-shrink.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-theme-keep/4.2.5/js/back2top.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-theme-keep/4.2.5/js/toggle-theme.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-theme-keep/4.2.5/js/code-block.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-theme-keep/4.2.5/js/main.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-theme-keep/4.2.5/js/libs/anime.min.js"></script>
+
+<!-- local search -->
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-theme-keep/4.2.5/js/local-search.min.js"></script>
+
+
+<!-- lazyload -->
+
+
+<div class="">
+    <!-- home page -->
+    
+
+    <!-- post page -->
+    
+        <!-- post-helper -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-theme-keep/4.2.5/js/post/post-helper.min.js"></script>
+
+        <!-- toc -->
+        
+
+        <!-- copyright-info -->
+        
+
+        <!-- share -->
+        
+    
+
+    <!-- categories page -->
+    
+
+    <!-- links page -->
+    
+
+    <!-- photos page -->
+    
+
+    <!-- tools page -->
+    
+</div>
+
+<!-- mermaid -->
+
+
+<!-- mathjax -->
+
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+
+<!-- pjax -->
+
+
+
+    
+        
+    
+
+<script src="https://live2d-widget-mygo.vercel.app/autoload.js"></script>
+<style>
+    #waifu {
+        position: fixed !important;
+        z-index: 9999 !important;
+    }
+</style>
+</body>
+</html>
