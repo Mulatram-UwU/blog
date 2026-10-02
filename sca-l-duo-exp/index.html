@@ -203,7 +203,7 @@
             
                 <span class="meta-info-item post-update-date">
                     <i class="icon fa-solid fa-file-pen"></i>&nbsp;
-                    <span class="datetime" data-updated="Sat Oct 03 2026 00:11:10 GMT+0800">2026-10-03 00:11:10</span>
+                    <span class="datetime" data-updated="Sat Oct 03 2026 01:16:42 GMT+0800">2026-10-03 01:16:42</span>
                 </span>
             
         
@@ -563,6 +563,78 @@
 <h1 id="结语"><a class="markdownIt-Anchor" href="#结语"></a> 结语</h1>
 <p>附<a href="sca.zip" download>代码</a>可复现。<code>tools/probe_indexer_position.py</code> 是那个位置探针，<code>tools/eval_mask_ablation.py</code> 是掩码消融，TinyStories 和 BPE 太大没有打包。</p>
 <p>这一轮的结论和我的预期是反的。我本来想证明“序列更长 SCA-L 更强”，结果证明的是：索引器缺的是一根时间轴，而它省下来的价值来自预算，不是上下文。</p>
+<p>2026/10/3更新：</p>
+<p>上面「时间分辨率」那一节里有一句话要撤回：我写了“索引器不再输给免费滑窗”，还写了“内容轴在窗内几乎没提供增量”。<br />
+那个结论是从“把纯窗口替换进已训练模型”测出来的（0.005 个 loss），属于分布外操作，不能算数。于是我补了对照。</p>
+<p>新加的开关是 <code>--pos-only</code>：内容格点整个摘掉，密度控制器也摘掉，掩码只剩“最近 <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>2</mn><mo>×</mo><mtext>pos_chunk</mtext></mrow><annotation encoding="application/x-tex">2\times\text{pos\_chunk}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.72777em;vertical-align:-0.08333em;"></span><span class="mord">2</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:1.00444em;vertical-align:-0.31em;"></span><span class="mord text"><span class="mord">pos_chunk</span></span></span></span></span> 个 token”。<br />
+也就是说它<strong>就是一个滑动窗口模型</strong>，seed、步数、block、batch 全部和 <code>--pos-chunk</code> 那版逐字一致。</p>
+<p><img   src="sparse_gap.png"  alt="" ><br />
+绿线是这次新跑的。四条曲线现在在同一张图上：</p>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>读到的 K 占比</th>
+<th>验证 loss</th>
+<th>验证准确率</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>稠密（全部 K）</td>
+<td>100%</td>
+<td>1.6641</td>
+<td>58.76%</td>
+</tr>
+<tr>
+<td>4 维格点索引器</td>
+<td>44.3%</td>
+<td>1.9566</td>
+<td>53.16%</td>
+</tr>
+<tr>
+<td>内容格点 ∧ 窗口</td>
+<td>37.5%</td>
+<td>1.7971</td>
+<td>56.20%</td>
+</tr>
+<tr>
+<td><strong>纯窗口（摘掉内容轴）</strong></td>
+<td>43.7%</td>
+<td><strong>1.6544</strong></td>
+<td><strong>58.67%</strong></td>
+</tr>
+</tbody>
+</table>
+<p>（最后 10 次验证的均值。）</p>
+<p><strong>结论是彻底反的：内容轴不是“贡献很小”，是负的。</strong></p>
+<p>纯窗口比内容格点 ∧ 窗口好 <strong>0.1427 个 loss、2.47 个准确率点</strong>，而且它读得<strong>更多</strong>（43.7% 对 37.5%）。<br />
+这个方向对内容格点版是<strong>有利</strong>的偏置——它多读了 16.5% 的 K 还是输 2.47 个点，因为这是单侧判定，结论反而更硬。</p>
+<p>更扎眼的是表格的第一行和最后一行：<strong>读最近 256 个 token，在 loss 上比读全部 1024 个还好 0.0097，准确率基本打平（58.67% 对 58.76%）。</strong><br />
+在这个语料上长程注意力不但没用，还略微有害。</p>
+<p>顺带再看一眼那个自创指标：</p>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>密度</th>
+<th>recall</th>
+<th>净找回</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>纯窗口</td>
+<td>0.596</td>
+<td><strong>0.9763</strong></td>
+<td><strong>0.9422</strong></td>
+</tr>
+</tbody>
+</table>
+<p>一个<strong>完全没有路由能力</strong>的模型把净找回刷到了 0.94。原因不难发现：recall 的 teacher 是模型自己的稠密注意力，而这个模型的注意力只见过窗口，teacher 本身就长成了窗口的形状。<br />
+<strong>这是指标自指最裸的一次演示</strong>，也又一次说明注意力质量类的指标在受限掩码训练的模型上会系统性偏乐观。</p>
+<p>所以现在的判断是：**SCA-L Duo 那个索引器在 TinyStories 上是负资产。**格子、码本、密度控制器、rate-distortion 辅助目标加起来，打不过一行 <code>rel &lt; 256</code>。</p>
+<p>这不等于“学出来的路由一定没用”，但它把问题问反了：在<strong>没有长程依赖</strong>的数据上，任何在窗内做内容筛选的动作都在减分，因为窗内每一份预算都该给最近的 token。要检验索引器有没有价值只能换语料，也就是前面说的下一步。</p>
 
                     
                 </div>
@@ -952,5 +1024,20 @@
         z-index: 9999 !important;
     }
 </style>
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+        tex2jax: {
+            inlineMath: [ ["$","$"], ["\\(","\\)"] ],
+            skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+            processEscapes: true
+        }
+    });
+    MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax();
+        for (var i = 0; i < all.length; ++i)
+            all[i].SourceElement().parentNode.className += ' has-jax';
+    });
+</script>
+<script src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
 </body>
 </html>
